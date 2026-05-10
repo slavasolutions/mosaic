@@ -1,0 +1,8 @@
+# Internal planning bundle — not part of the public Mosaic spec.
+# These live alongside locally for reference; they belong to the Clear engine work.
+clear-decisions.md
+clear-terminology.md
+handoff-briefing.md
+
+# The marketing site is its own repo (clearcms/marketing-site).
+clear-marketing-site/
