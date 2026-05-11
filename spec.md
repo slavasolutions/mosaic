@@ -481,7 +481,7 @@ A site's `schemaVersion` MUST bump on:
 - Renaming variants
 - Token group additions/removals (token VALUE changes are non-breaking)
 
-Schema migrations are implementation-defined; Mosaic does not standardize them.
+Block-type evolutions are implementation-defined; Mosaic does not standardize them.
 
 ---
 

@@ -28,7 +28,7 @@ This is the same insight Markdown had: a content format with no vendor, no runti
 
 ## What Mosaic is not
 
-- Not an engine. Doesn't run. Doesn't render. Doesn't sync.
+- Not an engine. Doesn't run. Doesn't render. Doesn't merge.
 - Not a CMS. A CMS implements Mosaic. Mosaic itself has no admin UI.
 - Not a binary. Plain text files only (with binary assets at known paths).
 - Not opinionated about hosting, deployment, or editing experience.
@@ -361,7 +361,7 @@ No. Portable Text is a rich-text-block format (one paragraph at a time). Mosaic 
 Those are conventions inside specific tools, not specifications. Mosaic formalizes the shape so multiple tools can read and write the same content. A Hugo site can be moved to Eleventy in theory; in practice it requires rewriting frontmatter, rebuilding components, and migrating shortcodes. A Mosaic site moves between Mosaic engines without conversion.
 
 **Why not use a database-backed CMS export format?**
-Database CMSes export their internal model (rows, joins, relationships). The export is shaped by the database, not by the website. Mosaic's shape is the website itself.
+Row-based CMSes export their internal model (rows, joins, relationships). The export is shaped by the storage layer, not by the website. Mosaic's shape is the website itself.
 
 **Does Mosaic require a CRDT?**
 No. The format is just files. A CRDT engine (like Clear) can produce and consume Mosaic, but so can a hand-edited folder, a static-site generator, or an AI agent.
