@@ -1,0 +1,36 @@
+{
+  "name": "@slavasolutions/mosaic-spec",
+  "version": "0.5.0",
+  "description": "Mosaic — a portable document format for structured web content. This package ships the normative spec (spec.md) and the JSON Schema 2020-12 validator (mosaic.schema.json) for the mosaic.json site schema. The format is independent of any rendering engine; engines depend on this package read-only.",
+  "license": "CC0-1.0",
+  "main": "mosaic.schema.json",
+  "files": [
+    "spec.md",
+    "mosaic.schema.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slavasolutions/mosaic.git"
+  },
+  "bugs": {
+    "url": "https://github.com/slavasolutions/mosaic/issues"
+  },
+  "homepage": "https://github.com/slavasolutions/mosaic#readme",
+  "keywords": [
+    "mosaic",
+    "cms",
+    "content-management",
+    "content-format",
+    "spec",
+    "specification",
+    "json-schema",
+    "portable-format",
+    "headless-cms",
+    "structured-content"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
