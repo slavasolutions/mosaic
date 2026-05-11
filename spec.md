@@ -103,6 +103,30 @@ OPTIONAL. Two-level map of design token group → name → value. Renderers SHOU
 
 Common groups (by convention, not enforced): `color`, `font`, `size`, `space`, `radius`, `shadow`, `leading`, `tracking`, `weight`, `duration`, `ease`.
 
+### 4.2a `tokenOverrides` cascade (v0.2 DRAFT)
+
+Tokens declared in `mosaic.json#tokens` are the site-level defaults. v0.2 introduces an additive **scope cascade** that allows pages and section instances to rebind token VALUES for a narrower scope:
+
+```
+site (mosaic.json#tokens)
+  └─ page (page.tokenOverrides)
+       └─ section (sectionInstance.tokenOverrides)
+            └─ slot (rare — see "Open question" in v0.2-changes.md)
+```
+
+Resolution rules:
+- `tokenOverrides` is a two-level map of `<group>` → `<name>` → `<value>`, same shape as `tokens` (§4.2).
+- Resolution is **last-write-wins** along the cascade: section overrides page, page overrides site.
+- `tokenOverrides` MUST only override token names already declared at the site level. Introducing a NEW `<group>` or `<name>` via an override is INVALID; readers MUST ignore unknown overrides and SHOULD emit a warning.
+- Renderers SHOULD expose overrides as scoped CSS custom property declarations on the page wrapper (for page-level overrides) and the section wrapper (for section-level overrides), so that nested elements inherit naturally. For non-CSS renderers, scoping is implementation-defined but MUST preserve the same last-write-wins precedence.
+- Token VALUE changes via `tokenOverrides` are non-breaking and MUST NOT bump `schemaVersion` (§10 Versioning).
+
+Where `tokenOverrides` may appear:
+- On a page record — see §5.2.
+- On a `SectionInstance` — see §5.1, additive field.
+
+Level 1 readers MAY ignore `tokenOverrides` entirely; sections render with site-level tokens. Support is OPTIONAL.
+
 ### 4.3 `blockTypes`
 
 REQUIRED (MAY be empty). A `BlockType` MUST have:
@@ -145,6 +169,44 @@ OPTIONAL on every `BlockType`. Renderers SHOULD interpret:
 - `align`: `"start"` \| `"center"` \| `"end"` \| `"stretch"`
 
 Unknown values MUST be ignored, not error.
+
+### 4.6a `LayoutSpec` (v0.2 DRAFT)
+
+The `layouts` map (§4) declares named layout templates that pages reference via `page.layout: "<name>"` (§5). A `LayoutSpec` describes a responsive grid that section instances opt into via §5.1a. Support is OPTIONAL for Level 1 readers; readers MAY ignore `layouts` and stack sections vertically.
+
+```jsonc
+"layouts": {
+  "longform": {
+    "grid": { "columns": 12, "gap": "section" },
+    "breakpoints": { "sm": 640, "md": 900, "lg": 1280 },
+    "areas": {
+      "default": [["header"], ["content"], ["footer"]],
+      "lg":      [["header header header"],
+                  [".      content ."     ],
+                  ["footer footer footer"]]
+    },
+    "sectionDefaults": { "area": "content" }
+  }
+}
+```
+
+A `LayoutSpec` MUST have:
+- `grid`: object with:
+  - `columns`: integer (1–24) — column count for the largest declared breakpoint
+  - `gap`: `"stack"` \| `"block"` \| `"section"` — gap token (per §4.6 convention)
+- `areas`: object mapping a breakpoint key (or `"default"`) to a 2-D array of area-name rows. Each row is an array of strings; each string is one cell's area name, or `"."` for an empty cell. Repeated names on adjacent cells span those cells (CSS Grid `grid-template-areas` semantics). Row counts MAY differ across breakpoints.
+
+A `LayoutSpec` MAY have:
+- `breakpoints`: object mapping a breakpoint key to a min-viewport-width integer (pixels). Keys MUST be `[a-z0-9]+`. Renderers SHOULD apply each breakpoint's `areas` entry above its min width; otherwise the `"default"` entry applies.
+- `sectionDefaults`: object with `area: "<areaName>"` — area assigned to a section that does not declare `sectionLayout` (§5.1a).
+- `description`: string
+
+Constraints:
+- Every area name used in `areas` MUST be referenceable from §5.1a `sectionLayout.area`.
+- `areas.default` is REQUIRED if `breakpoints` is omitted; OPTIONAL otherwise (the smallest breakpoint's entry acts as default).
+- Renderers SHOULD implement `LayoutSpec` via CSS Grid. Implementations targeting non-CSS surfaces (mobile native, print) MAY approximate areas as a vertical stack ordered by row, then column.
+
+Unknown fields in a `LayoutSpec` MUST be preserved by Level 2+ writers.
 
 ### 4.7 `collections`
 
@@ -203,11 +265,53 @@ Unknown fields MUST be preserved by Level 2+ writers (forward compat).
   "variant": "string",                    // OPTIONAL; if present, MUST be in blockType.variants
   "state": "draft" | "published",         // OPTIONAL, default "published"
   "publishedHash": "string" | null,       // OPTIONAL, sha256 of last published slot content
-  "slots": { "<slotName>": <value>, ... } // REQUIRED
+  "slots": { "<slotName>": <value>, ... }, // REQUIRED
+  "sectionLayout": <SectionLayout>,       // OPTIONAL (v0.2 DRAFT, see §5.1a)
+  "tokenOverrides": { "<group>": { "<name>": "<value>" } }   // OPTIONAL (v0.2 DRAFT, see §4.2a)
 }
 ```
 
 The `id` MUST be stable across edits. Renderers SHOULD use it as an HTML id or anchor.
+
+### 5.1a `sectionLayout` on a SectionInstance (v0.2 DRAFT)
+
+A `SectionInstance` MAY include an OPTIONAL `sectionLayout` field that opts the section into a named area of the page's `LayoutSpec` (§4.6a):
+
+```json
+{
+  "id": "intro",
+  "blockType": "richtextBlock",
+  "slots": { "...": "..." },
+  "sectionLayout": {
+    "area": "content",
+    "span": 8
+  }
+}
+```
+
+- `area`: REQUIRED if `sectionLayout` is present — MUST be an area name declared in the page's resolved `LayoutSpec.areas`.
+- `span`: OPTIONAL integer — column span within the area (1–`grid.columns`). Renderers MAY ignore.
+- If `sectionLayout` is absent, the section falls into `LayoutSpec.sectionDefaults.area` (if declared) or the default flow (vertical stack).
+- If `area` references an unknown area name, renderers MUST fall back to `sectionDefaults.area`, then to default flow. Renderers SHOULD emit a warning.
+
+`sectionLayout` is additive to §5.1: readers that ignore it MUST still render the section in default flow.
+
+### 5.2 `tokenOverrides` on page records (v0.2 DRAFT)
+
+A page record MAY include an OPTIONAL `tokenOverrides` field that re-binds token values for the scope of that page only. See §4.2a for full cascade semantics.
+
+```json
+{
+  "title": "Limited edition",
+  "slug": "/le",
+  "status": "published",
+  "sections": [],
+  "tokenOverrides": {
+    "color": { "accent": "#ff2d55" },
+    "font":  { "display": "var(--font-serif-display)" }
+  }
+}
+```
 
 ---
 
@@ -225,6 +329,26 @@ A Level 1 reader MUST validate every section it processes. Section is **invalid*
 Invalid sections MUST NOT crash a reader. Readers MUST surface them via:
 - A warnings channel (CLI, log, API field)
 - Optional refusal to render (configurable strictness)
+
+### 6.1 Consumer capability declaration — silent skip (v0.2 DRAFT)
+
+§6 defines what happens to an *invalid* section (warnings channel) and §6's preceding context implies that an unknown `blockType` renders as a `<missing template>` placeholder — appropriate for an engine-default renderer with no other contract.
+
+Headless consumers — custom renderers, mobile apps, AI summarisers, search indexers, RSS feed builders — are partial views of a Mosaic document and typically implement only a subset of canonical block types. For these consumers, a placeholder is the wrong default.
+
+A consumer MAY declare a **supported block types set** as part of its rendering contract. Such a consumer:
+
+- MUST silently drop sections whose `blockType` is not in its supported set from the render output.
+- MUST NOT emit a `<missing template>` placeholder for dropped sections.
+- MUST NOT raise a validation warning for the unsupported `blockType` itself (separate from §6 validation: a section can be both valid per the site schema and unsupported by the consumer).
+- SHOULD still apply §6 validation for *supported* sections.
+- SHOULD preserve unsupported sections in any pass-through serialisation (e.g. a Level 2 writer round-tripping the document) so that other consumers still see them. Silent skip applies to rendering, not to storage.
+
+The canonical implementation pattern is a `SKIP_BLOCKS` set (or equivalent allow-list / deny-list) consulted before rendering each section. The set is consumer-side configuration; `mosaic.json` itself MUST NOT declare per-consumer skip rules.
+
+Rationale: a headless consumer is a partial projection of the document. Forcing it to emit placeholders for blocks outside its scope leaks engine-default rendering concerns into surfaces where they don't belong (an RSS feed has no concept of a "missing template").
+
+This contract is OPTIONAL for engine-default renderers, which SHOULD continue to surface unknown blocks per §6.
 
 ---
 
@@ -503,6 +627,98 @@ Renderers SHOULD follow the **outer / inner** pattern for block markup so that b
 Blocks that intentionally render full-bleed content (e.g. `mediaBlock--full-bleed` for hero imagery, `hero--fullbleed` for cinematic heroes) MAY omit the `.block__inner` wrapper so the content stretches to the viewport edges along with the background.
 
 This pattern is OPTIONAL — renderers MAY use a single-container layout instead. Mosaic does not specify markup; this guidance lives in the spec because the pattern is well-tested and removes the most common "everything looks the same" complaint when blocks share a width-constrained container.
+
+---
+
+## 10b. `freeform` canonical block type (v0.2 DRAFT)
+
+`freeform` is a canonical block type in the standard library that allows absolute positioning of items inside a declared aspect-ratio canvas. It is the spec's documented escape hatch for design-heavy content that does not decompose cleanly into stacked sections — covers, editorial inserts, posters, hero illustrations, art-directed callouts.
+
+`freeform` is OPTIONAL: it is the least portable canonical block across renderers (depends on absolute positioning + a fixed aspect canvas) and Level 1 readers MAY treat it as an unknown block (§6) or silently skip it (§6.1).
+
+### 10b.1 Declaration
+
+```jsonc
+"blockTypes": {
+  "freeform": {
+    "variants": ["default"],
+    "slots": {
+      "aspect": { "type": "text", "required": true },   // e.g. "16/9", "3/4", "1/1"
+      "items":  { "type": "list", "of": "struct:freeformItem", "required": true }
+    }
+  }
+},
+"structs": {
+  "freeformItem": {
+    "kind":     { "type": "text", "required": true },   // "text" | "asset" | "shape"
+    "position": { "type": "struct", "name": "freeformPosition", "required": true },
+    "slots":    { "type": "struct", "name": "freeformItemSlots" }
+  },
+  "freeformPosition": {
+    "x":         { "type": "number", "required": true },   // % of container width OR px (see §10b.3)
+    "y":         { "type": "number", "required": true },   // % of container height OR px
+    "w":         { "type": "number", "required": true },   // % or px
+    "h":         { "type": "number", "required": true },   // % or px
+    "z":         { "type": "number" },                     // OPTIONAL, integer; higher = on top
+    "rotation":  { "type": "number" },                     // OPTIONAL, degrees
+    "units":     { "type": "text" }                        // OPTIONAL, "percent" (default) | "px"
+  },
+  "freeformItemSlots": {
+    "text":   { "type": "richtext" },                      // if kind == "text"
+    "asset":  { "type": "asset" },                         // if kind == "asset"
+    "shape":  { "type": "text" },                          // if kind == "shape", names a primitive (e.g. "rect", "circle")
+    "fill":   { "type": "text" },                          // OPTIONAL, color token or value
+    "stroke": { "type": "text" }                           // OPTIONAL
+  }
+}
+```
+
+### 10b.2 Slots
+
+- `aspect`: REQUIRED string of the form `"<W>/<H>"` (e.g. `"16/9"`). The canvas scales responsively while preserving this ratio.
+- `items`: REQUIRED list of `freeformItem` structs. MAY be empty.
+
+### 10b.3 Item kinds
+
+- `"text"` — `slots.text` (richtext) is rendered inside the positioned box.
+- `"asset"` — `slots.asset` (asset ref, §7.1) is rendered inside the box. Typically an image or SVG.
+- `"shape"` — `slots.shape` names a primitive shape. Renderers SHOULD implement at least `"rect"` and `"circle"`. Unknown shapes MUST be ignored (no fallback rendering).
+
+### 10b.4 Coordinate system
+
+`units` selects the coordinate basis for `x`, `y`, `w`, `h`:
+- `"percent"` (default) — values are 0–100, relative to the canvas's resolved width/height. Renderers SHOULD use `position: absolute` with `left/top/width/height` as percentages.
+- `"px"` — values are absolute pixels measured against the canvas at its declared aspect. Renderers SHOULD scale via CSS transform or clamp.
+
+`z` is an integer; higher values render on top. Items with no `z` render in document order, all below items that declare `z`.
+
+`rotation` is in degrees clockwise. Renderers SHOULD apply via CSS `transform: rotate(...)` after positioning.
+
+### 10b.5 Rendering
+
+Renderers SHOULD render a `freeform` section as:
+
+```html
+<section class="block freeform">
+  <div class="freeform__canvas" style="aspect-ratio: 16/9; position: relative;">
+    <div class="freeform__item" style="position: absolute; left: 10%; top: 20%; width: 30%; height: 40%; z-index: 5; transform: rotate(-3deg);">
+      ...item content...
+    </div>
+    ...
+  </div>
+</section>
+```
+
+The canvas MUST establish its own positioning context (`position: relative`) so children can be positioned absolutely against it. Renderers MAY omit `.freeform__canvas` if the outer section element already provides the positioning context.
+
+### 10b.6 Tradeoffs and portability
+
+`freeform` is the LEAST portable canonical block:
+- Absolute positioning does not gracefully degrade to other surfaces (RSS, plaintext email, screen readers benefit from explicit alt text).
+- Non-CSS renderers (native mobile, print) MUST approximate as a vertical stack ordered by `z` ascending — accepting that the visual composition will not survive.
+- Headless consumers (§6.1) SHOULD include `freeform` in their skip set unless they specifically support it.
+
+Authors SHOULD prefer composing standard blocks where possible. `freeform` is the intentional escape hatch for cases where the design IS the message.
 
 ---
 
