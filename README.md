@@ -318,7 +318,7 @@ Mosaic is the convention that ties these together into a complete, browseable, s
 
 ## Status
 
-Mosaic is at **v0.1**. The format shape is settling but the spec is not yet final. Breaking changes are possible until v1.0. The reference implementation (Clear) drives the spec forward; community input is welcome via issues and pull requests.
+Mosaic is at **v0.3 (draft)**. The format shape is settling but the spec is not yet final. Breaking changes are possible until v1.0. The reference implementation (Clear) drives the spec forward; community input is welcome via issues and pull requests.
 
 The longer normative spec lives in [`spec.md`](./spec.md) — covers conformance levels, the reference resolution algorithm, manifest semantics, and the JSON Schema for `mosaic.json`. This README is the introduction + anatomy + format reference; `spec.md` is the validator's-eye view.
 
