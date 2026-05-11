@@ -6,7 +6,7 @@ Mosaic is a folder-based, JSON-and-Markdown specification for representing a web
 
 A Mosaic site is a directory of plain files. Pages are JSON. Long-form bodies are Markdown. Images and other binary assets sit at human paths with a manifest mapping to content hashes. A schema at the root defines the block types, slots, design tokens, and collections that the site uses.
 
-Mosaic is the format. Clear ([clearcms.dev](https://clearcms.dev)) is the reference implementation — a live, collaborative engine that reads and writes Mosaic. Other engines, static-site generators, and tools can implement Mosaic too.
+Mosaic is the format. Clear ([clear-cms.com](https://clear-cms.com)) is the reference implementation — a live, collaborative engine that reads and writes Mosaic. Other engines, static-site generators, and tools can implement Mosaic too.
 
 ---
 
@@ -157,6 +157,118 @@ These are the only ref shapes Mosaic defines. Everything else is plain content.
 
 ---
 
+## Format reference
+
+### Closed slot type taxonomy
+
+Every slot in a `blockType.slots` declaration takes a `type` from this fixed set:
+
+| Type | Value shape | Notes |
+|------|-------------|-------|
+| `text` | plain string | Optional `maxLength`. |
+| `richtext` | string (Markdown by default) or Portable Text object | `format: "markdown" \| "portable-text"`. |
+| `asset` | `asset:path` string | Optional `accept: ["image" \| "video" \| "audio" \| "font" \| "svg" \| "pdf"]`. |
+| `ref` | `ref:collection/id` string | `refTo: <collection>` required. |
+| `list` | array of values | `of: <type>` required (`"string"`, `"number"`, `"ref:<collection>"`, `"struct:<name>"`); optional `min` / `max`. |
+| `struct` | object | `name: <struct-name>` references a struct definition in the schema. |
+| `code` | `{ lang, body }` object | `lang: ["ts", "json", "md", ...]` optional whitelist. |
+| `number` | number | Optional `min` / `max`. |
+| `boolean` | boolean | |
+
+Slot common fields: `type` (required), `required: bool`, `description: string`.
+
+### Block type shape
+
+```json
+"hero": {
+  "variants": ["centered", "split", "fullbleed"],
+  "slots": { "headline": { "type": "text", "required": true }, ... },
+  "layout": { "direction": "row" | "column", "gap": "stack" | "block" | "section", "align": "start" | "center" | "end" | "stretch" }
+}
+```
+
+`variants` is a closed identifier list. Renderers may style each variant; validators reject section instances referencing undeclared variants. `layout` is an optional hint — renderers SHOULD respect it where it makes sense.
+
+### Section instance lifecycle
+
+Every section in a page's `sections[]`:
+
+```json
+{
+  "id": "sec_hero",
+  "blockType": "hero",
+  "variant": "split",
+  "state": "published" | "draft",
+  "publishedHash": "sha256-..." | null,
+  "slots": { ... }
+}
+```
+
+- **`state`** — `"published"` (renderer serves) or `"draft"` (only editor sees).
+- **`publishedHash`** — canonical hash of the last published slot content. Implementations using the hybrid storage tier (block bodies as content-addressed blobs) populate this; pure file-only sites can leave it null.
+
+### Page record shape
+
+```json
+{
+  "title": "Home",
+  "slug": "/",
+  "status": "published" | "draft",
+  "publishedVersion": "ISO timestamp",
+  "publishedAt": "YYYY-MM-DD",
+  "author": { "name": "...", "handle": "..." },
+  "seo": { "title": "...", "description": "...", "ogImage": "asset:..." },
+  "layout": "default",
+  "sections": [...]
+}
+```
+
+Required: `title`, `slug`, `status`, `sections`. All others optional. `author` and `publishedAt` apply to any page (not just blog posts).
+
+### Collections + records
+
+`mosaic.json` declares a collection with `schema` (struct name) and optional `indexBy` (sort field). Two record-layout options:
+
+1. **One file holds all records** — `content/collections/<name>.json` with `{ schema, entries: { id: {...}, ... } }`.
+2. **Records on the path** — `content/<name>/<id>.json` per record. Preferred for collections with many records or with URL semantics; consistent with `content/pages/` and `content/blog/`.
+
+Schema declares URL pattern optionally: `"blog": { "schema": "blogPost", "urlPattern": "/blog/{slug}", "indexBy": "publishedAt" }`. Collections without `urlPattern` are embedded-only (referenced from sections, no URL).
+
+### i18n
+
+Locale set declared in the schema:
+
+```json
+{
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": ["en", "fr", "es"],
+    "routing": "prefix" | "subdomain" | "domain",
+    "fallback": "default" | "404"
+  }
+}
+```
+
+Two translation patterns:
+- **Per-locale page tree** — `content/pages/en/about.json`, `content/pages/fr/about.json`. Different sections allowed per locale.
+- **Field-level translation** — locale-keyed values: `{ "label": { "en": "Get started", "fr": "Commencer" } }`. Used for tokens, CTAs, shared records.
+
+Long-form bodies suffix with locale: `a-site-is-a-document.en.md`, `.fr.md`.
+
+A slot can declare `translatable: true` in its definition; the value becomes a locale map.
+
+### Globals (optional)
+
+Site-wide singletons (navigation, footer config, site identity) MAY live in `globals/*.json` rather than being duplicated on every page. Renderers inject globals at canonical positions (navigation at top, footer at bottom) unless a page explicitly overrides by providing the corresponding section in its own `sections[]`.
+
+This pattern is OPTIONAL — a Mosaic site may put the siteHeader as a per-page section, or as a global. Implementations SHOULD support both.
+
+### Encoding
+
+UTF-8 throughout. Path identifiers (`slug`, asset paths, collection names) MUST be URL-safe ASCII (`[a-z0-9_-/]`). JSON files SHOULD use 2-space indent and trailing newline.
+
+---
+
 ## How Mosaic relates to existing web standards
 
 Mosaic sits **above** the web's rendering and authoring standards, not beside them. It composes existing open standards rather than replacing them.
@@ -204,11 +316,11 @@ Mosaic is the convention that ties these together into a complete, browseable, s
 
 Mosaic is at **v0.1**. The format shape is settling but the spec is not yet final. Breaking changes are possible until v1.0. The reference implementation (Clear) drives the spec forward; community input is welcome via issues and pull requests.
 
-The full specification lives in [`spec.md`](./spec.md). _(Coming soon.)_
+The longer normative spec lives in [`spec.md`](./spec.md) — covers conformance levels, the reference resolution algorithm, manifest semantics, and the JSON Schema for `mosaic.json`. This README is the introduction + anatomy + format reference; `spec.md` is the validator's-eye view.
 
 ## Reference implementation
 
-[Clear](https://clearcms.dev) is the live, collaborative engine that reads and writes Mosaic. It provides:
+[Clear](https://clear-cms.com) is the live, collaborative engine that reads and writes Mosaic. It provides:
 
 - Real-time multiplayer editing
 - Schema validation against the site's `mosaic.json`
@@ -275,4 +387,4 @@ The Mosaic specification is dedicated to the public domain under [CC0 1.0](https
 
 ---
 
-Mosaic is developed alongside [Clear](https://clearcms.dev) but the format is intentionally separate. The goal is a living open standard, not a vendor format.
+Mosaic is developed alongside [Clear](https://clear-cms.com) but the format is intentionally separate. The goal is a living open standard, not a vendor format.
