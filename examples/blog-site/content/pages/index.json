@@ -1,0 +1,33 @@
+{
+  "title": "Home",
+  "slug": "/",
+  "status": "published",
+  "sections": [
+    {
+      "id": "hero",
+      "blockType": "heading",
+      "variant": "hero",
+      "slots": {
+        "text": "A small blog, in Mosaic format"
+      }
+    },
+    {
+      "id": "intro",
+      "blockType": "paragraph",
+      "slots": {
+        "body": "This site has a `blog` collection. The home page lists recent posts; each post has its own page generated from the collection's `urlPattern`."
+      }
+    },
+    {
+      "id": "recent-posts",
+      "blockType": "postList",
+      "slots": {
+        "title": "Recent posts",
+        "posts": [
+          "ref:blog/first-post",
+          "ref:blog/second-post"
+        ]
+      }
+    }
+  ]
+}

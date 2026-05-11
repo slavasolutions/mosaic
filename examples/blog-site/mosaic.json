@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "name": "Blog Site",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "tokens": {
+    "color": {
+      "bg": "#fafafa",
+      "fg": "#1a1a1a",
+      "muted": "#666666",
+      "accent": "#0066cc"
+    },
+    "size": {
+      "h1": "2.5rem",
+      "h2": "1.75rem",
+      "body": "1rem"
+    },
+    "space": {
+      "stack": "1rem",
+      "block": "2rem",
+      "section": "4rem"
+    }
+  },
+  "blockTypes": {
+    "heading": {
+      "variants": ["default", "hero"],
+      "slots": {
+        "text": { "type": "text", "required": true }
+      }
+    },
+    "paragraph": {
+      "variants": ["default"],
+      "slots": {
+        "body": { "type": "richtext", "required": true }
+      }
+    },
+    "postList": {
+      "variants": ["default"],
+      "slots": {
+        "title": { "type": "text" },
+        "posts": {
+          "type": "list",
+          "of": { "kind": "ref", "refTo": "blog" },
+          "min": 1
+        }
+      }
+    },
+    "postBody": {
+      "variants": ["default"],
+      "slots": {
+        "post": { "type": "ref", "refTo": "blog", "required": true }
+      }
+    }
+  },
+  "structs": {
+    "blogPost": {
+      "title": { "type": "text", "required": true },
+      "slug": { "type": "text", "required": true },
+      "publishedAt": { "type": "text", "required": true },
+      "excerpt": { "type": "text" },
+      "body": { "type": "richtext", "required": true }
+    }
+  },
+  "collections": {
+    "blog": {
+      "schema": "blogPost",
+      "indexBy": "publishedAt",
+      "urlPattern": "/blog/{slug}",
+      "layout": "records-on-path"
+    }
+  }
+}

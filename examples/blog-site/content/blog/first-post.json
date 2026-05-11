@@ -1,0 +1,7 @@
+{
+  "title": "First post",
+  "slug": "first-post",
+  "publishedAt": "2026-05-01",
+  "excerpt": "A short excerpt that postList can use when summarising.",
+  "body": "This is the body of the first blog post. It's stored as a markdown string in a `richtext` slot. A reader can render this however it wants — inline, on a dedicated page, in an RSS feed, in a search index."
+}

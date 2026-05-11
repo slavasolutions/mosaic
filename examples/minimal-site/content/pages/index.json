@@ -1,0 +1,21 @@
+{
+  "title": "Home",
+  "slug": "/",
+  "status": "published",
+  "sections": [
+    {
+      "id": "intro-heading",
+      "blockType": "heading",
+      "slots": {
+        "text": "Hello, Mosaic"
+      }
+    },
+    {
+      "id": "intro-body",
+      "blockType": "paragraph",
+      "slots": {
+        "body": "This is the smallest meaningful Mosaic document. One page, two block types, no assets, no collections."
+      }
+    }
+  ]
+}
