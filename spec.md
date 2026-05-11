@@ -485,6 +485,27 @@ Schema migrations are implementation-defined; Mosaic does not standardize them.
 
 ---
 
+## 10a. Layout pattern — outer / inner
+
+Renderers SHOULD follow the **outer / inner** pattern for block markup so that backgrounds can stretch edge-to-edge while content stays within a consistent content cage:
+
+```html
+<section class="block <blockType> <blockType>--<variant>">
+  <div class="block__inner">
+    ...block content...
+  </div>
+</section>
+```
+
+- The **outer** `.block` element fills 100% of the viewport width. Backgrounds (colors, images, gradients) applied to `.block` paint wall-to-wall, regardless of viewport.
+- The **inner** `.block__inner` element constrains content. Recommended: `max-width: 1200px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2rem);`
+
+Blocks that intentionally render full-bleed content (e.g. `mediaBlock--full-bleed` for hero imagery, `hero--fullbleed` for cinematic heroes) MAY omit the `.block__inner` wrapper so the content stretches to the viewport edges along with the background.
+
+This pattern is OPTIONAL — renderers MAY use a single-container layout instead. Mosaic does not specify markup; this guidance lives in the spec because the pattern is well-tested and removes the most common "everything looks the same" complaint when blocks share a width-constrained container.
+
+---
+
 ## 11. The reference implementation
 
 [Clear](https://github.com/clearcms/clear) is a Level 3 implementation:
