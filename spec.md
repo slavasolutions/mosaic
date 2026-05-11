@@ -1,6 +1,6 @@
 # Mosaic — normative specification
 
-**Version:** 0.1 (draft)
+**Version:** 0.2 (draft — normative; subject to change pre-v1.0)
 **License:** CC0 1.0 Universal
 **Reference implementation:** [Clear](https://github.com/clearcms/clear)
 
@@ -18,8 +18,8 @@ Implementations claim a **conformance level**. A Mosaic-conformant implementatio
 
 An implementation that consumes Mosaic and renders or processes the content. MUST:
 - Parse the file tree per §3
-- Validate `mosaic.json` against §4 (block algorithm) and §5 (schema)
-- Resolve references per §7
+- Validate `mosaic.json` against §4 and validate each content record against §5
+- Resolve references per §7 (per the grammar in Appendix C)
 - Handle assets per §8
 
 MAY produce HTML, JSON, native UI, print, anything.
@@ -37,9 +37,10 @@ Level 2 + MUST preserve concurrent edits without data loss. Typically a CRDT-bac
 ## 2. Filesystem and encoding
 
 - Files MUST be UTF-8 encoded. JSON files SHOULD have trailing newline.
-- Directory and file names MUST match `[a-z0-9_-]+` for identifiers; `/` is the directory separator.
+- Directory and file names MUST match `[a-z0-9_-]+` for identifiers; `/` is the directory separator (on Windows filesystems, implementations MUST translate `\` to `/` when serialising paths in JSON).
 - File extensions: `.json`, `.md` for content; binary assets use their native extension; engine snapshots use `.loro` (implementation-specific).
-- Slugs MUST start with `/` and contain only `[a-z0-9_-/]`.
+- **Page slugs** (`page.slug`, §5) MUST start with `/` and contain only `[a-z0-9_-/]`. They represent the URL path directly.
+- **Collection record ids/slugs** (the identifier portion of `ref:<collection>/<id>`, and the `slug` field on collection records) are bare and MUST match `[a-z0-9_-]+` (no leading `/`, no internal `/`). The collection's `urlPattern` (§4.7) provides any URL prefix.
 - A page at slug `/about/team` MAY live at `content/pages/about/team.json` OR `content/pages/about/team/index.json` — both forms are valid.
 
 ---
@@ -119,7 +120,7 @@ Resolution rules:
 - Resolution is **last-write-wins** along the cascade: section overrides page, page overrides site.
 - `tokenOverrides` MUST only override token names already declared at the site level. Introducing a NEW `<group>` or `<name>` via an override is INVALID; readers MUST ignore unknown overrides and SHOULD emit a warning.
 - Renderers SHOULD expose overrides as scoped CSS custom property declarations on the page wrapper (for page-level overrides) and the section wrapper (for section-level overrides), so that nested elements inherit naturally. For non-CSS renderers, scoping is implementation-defined but MUST preserve the same last-write-wins precedence.
-- Token VALUE changes via `tokenOverrides` are non-breaking and MUST NOT bump `schemaVersion` (§10 Versioning).
+- Token VALUE changes via `tokenOverrides` are non-breaking and MUST NOT bump `schemaVersion` (§11 Versioning).
 
 Where `tokenOverrides` may appear:
 - On a page record — see §5.2.
@@ -402,7 +403,7 @@ If unresolvable, the resolver MUST return:
 
 ### 7.3 `block:sha256-<hash>`
 
-Engine-internal block bodies (Tier 2 storage). Resolves to:
+Engine-internal, content-addressed block bodies. Resolves to:
 
 ```json
 {
@@ -412,7 +413,7 @@ Engine-internal block bodies (Tier 2 storage). Resolves to:
 }
 ```
 
-Implementations without hybrid storage MAY ignore (treat as content placeholder).
+Mosaic does not require any particular block-body storage strategy. Engines MAY store block bodies as content-addressed blobs at `blocks/sha256/<hash>/content.json` (§3) for deduplication, history, or collaboration purposes. The shape of `content` is engine-defined (typically a `SectionInstance.slots` map, but Mosaic does not normatively specify it). Implementations without content-addressed block storage MAY treat `block:` refs as opaque placeholders (return `kind: "block"` with `content: null`); this is fully conformant.
 
 ### 7.4 `asset:content/<path>.md`
 
@@ -580,7 +581,7 @@ Implementations MAY recognize and template these by name:
 - **`exitOffer`** — special-purpose modal triggered by `"exit-intent"`.
 - **`toast`** — small ephemeral notification.
 
-Unknown overlay block types render via the standard fallback ("missing template" — see §6).
+Unknown overlay block types render via the standard fallback ("missing template" — see §6.1).
 
 ### 10.5 Manual trigger linking
 
@@ -589,23 +590,6 @@ In-content links of the form `<a href="#overlay:<id>">` SHOULD open the named ov
 ### 10.6 Conformance
 
 Overlays support is OPTIONAL for Level 1 readers. A pure-static or headless consumer MAY ignore the `overlays` declaration entirely.
-
----
-
-## 10. Versioning
-
-Mosaic version (this spec) is independent of `mosaic.json#meta.schemaVersion` (a particular site's schema version).
-
-- Spec version `0.x` — breaking changes possible
-- Spec version `1.0` and later — semver semantics
-
-A site's `schemaVersion` MUST bump on:
-- Adding or removing a `blockType`
-- Changing a `SlotDef` type or `required` flag
-- Renaming variants
-- Token group additions/removals (token VALUE changes are non-breaking)
-
-Block-type evolutions are implementation-defined; Mosaic does not standardize them.
 
 ---
 
@@ -722,7 +706,70 @@ Authors SHOULD prefer composing standard blocks where possible. `freeform` is th
 
 ---
 
-## 11. The reference implementation
+## 11. Versioning
+
+Mosaic version (this spec) is independent of `mosaic.json#meta.schemaVersion` (a particular site's schema version).
+
+- Spec version `0.x` — breaking changes possible
+- Spec version `1.0` and later — semver semantics
+
+A site's `schemaVersion` MUST bump on:
+- Adding or removing a `blockType`
+- Changing a `SlotDef` type or `required` flag
+- Renaming variants
+- Token group additions/removals (token VALUE changes are non-breaking)
+
+Block-type evolutions are implementation-defined; Mosaic does not standardize them.
+
+---
+
+## 12. Canonical hashing
+
+Several Mosaic fields rely on stable cryptographic hashes that MUST be computable identically across implementations: `SectionInstance.publishedHash` (§5.1), `assets/manifest.json#paths` sha values (§8), and the `block:sha256-<hash>` reference shape (§7.3). This section defines the canonical procedures.
+
+### 12.1 Canonical JSON encoding
+
+When hashing JSON-shaped Mosaic content (slot values, slot maps, struct values), implementations MUST encode the value using **JSON Canonicalisation Scheme (JCS)**, [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785). Briefly:
+
+- Object keys are sorted lexicographically by their UTF-16 code-unit order.
+- No insignificant whitespace.
+- Numbers are formatted per the I-JSON profile (ECMA-262 `Number.prototype.toString` rules).
+- Strings use the shortest UTF-8 encoding; the only escaped characters are those required by RFC 8259.
+
+Implementations MAY use any RFC 8785 implementation, including reference libraries in JavaScript (`canonicalize`), Go (`gowebpki/jcs`), Python (`jcs`), Rust (`json-canon`), etc.
+
+### 12.2 `publishedHash` computation
+
+For a `SectionInstance` whose `state` is `"published"`:
+
+1. Take the section's `slots` object (the value under the `slots` key, not the whole section).
+2. **Include** any unknown fields that have been preserved per the forward-compat rule (§5). Hashing MUST be a function of the section's complete published payload, not just the fields the writer understands.
+3. **Exclude** the surrounding section metadata (`id`, `blockType`, `variant`, `state`, `publishedHash` itself, `sectionLayout`, `tokenOverrides`). Only the `slots` value is hashed.
+4. Encode the resulting value via JCS (§12.1).
+5. Compute SHA-256 over the UTF-8 bytes of the canonical encoding.
+6. The `publishedHash` field is the lowercase hex string of the digest (64 hex characters, no prefix).
+
+Sections with `state: "draft"` MUST set `publishedHash` to `null` or omit the field.
+
+A writer SHOULD recompute `publishedHash` whenever it transitions a section from draft to published, or modifies the slot content of an already-published section. Readers MAY use the field for integrity checks; mismatches MUST surface as warnings, not errors.
+
+### 12.3 Asset manifest sha256
+
+The sha256 values in `assets/manifest.json#paths` (§8) are computed over the **raw bytes** of the asset file (no JCS — assets are not JSON). Format: `"sha256-<lowercase 64-hex>"`.
+
+If a manifest claims a sha256 that does not match the actual file bytes at that path, readers MUST emit a warning. Readers MUST NOT fail (the manifest is informational, not blocking — §8).
+
+### 12.4 `block:sha256-<hash>` references
+
+The `<hash>` portion of a `block:sha256-<hash>` reference (§7.3) is the lowercase 64-hex SHA-256 of the JCS-canonical encoding of the referenced `content` object. Implementations storing content-addressed block bodies MUST use this hashing scheme so refs are portable across engines.
+
+### 12.5 Conformance
+
+Level 1 readers MAY ignore `publishedHash` entirely; the field is advisory. Level 2 writers SHOULD compute and emit it. Level 3 engines (CRDT-backed) MUST compute and maintain it as content changes.
+
+---
+
+## 13. The reference implementation
 
 [Clear](https://github.com/clearcms/clear) is a Level 3 implementation:
 - Parser + validator: `@clear/core` (parser) + `@clear/schema` (validator)
@@ -736,7 +783,7 @@ Other implementations are encouraged. Open an issue to be listed.
 
 ---
 
-## 12. Open questions for v0.2+
+## 14. Open questions for v0.2+
 
 - **Translation key serialization** — locale-keyed values are clear in principle but JSON path conventions for "this whole slot is translatable" vs "this string field on this struct is translatable" need formalizing.
 - **Block algorithm migration** — schema bump tooling, op-level "this is a schema change" detection.
@@ -759,4 +806,96 @@ The [Clear marketing site repo](https://github.com/clearcms/marketing-site) is i
 
 ## Appendix B — change log
 
+- **v0.2 (2026-05-11, draft)** — additive: `LayoutSpec` body (§4.6a) and `sectionLayout` on section instances (§5.1a); `tokenOverrides` cascade at page and section scope (§4.2a, §5.2); `freeform` canonical block type (§10b); consumer capability declaration / silent skip (§6.1); outer/inner layout pattern guidance (§10a). Post-peer-review fixes: resolved duplicate `## 10` numbering (Versioning moved to §11; reference implementation now §13; open questions now §14); narrowed slug rule (§2) to distinguish page slugs from collection record ids; removed undefined "Tier 2 storage" / "hybrid storage" terminology from §7.3; added canonical hashing rules (§12); added Appendix C — reference string grammar.
 - **v0.1 (2026-05-10)** — first published spec. Format reference, conformance levels, resolution algorithm, manifest semantics, globals pattern, versioning rules.
+
+---
+
+## Appendix C — Reference string grammar
+
+This appendix is **normative**. It defines the syntactic shape, character classes, and normalisation rules for the four reference shapes resolved in §7.
+
+### C.1 Grammar (ABNF)
+
+ABNF per [RFC 5234](https://www.rfc-editor.org/rfc/rfc5234). Production names that overlap with RFC 5234 core rules (`ALPHA`, `DIGIT`, `HEXDIG`) use those definitions.
+
+```abnf
+ref-string      = asset-ref / record-ref / block-ref
+
+asset-ref       = "asset:" asset-path
+record-ref      = "ref:" collection "/" record-id
+block-ref       = "block:sha256-" sha256-hex
+
+asset-path      = path-segment *( "/" path-segment )
+path-segment    = 1*( ALPHA / DIGIT / "_" / "-" / "." )
+                ; no whitespace, no ":", no "?", no "#", no "%", no NULs
+
+collection      = 1*( ALPHA / DIGIT / "_" / "-" )
+                ; identical to the identifier rule from §2
+
+record-id       = 1*( ALPHA / DIGIT / "_" / "-" / "." )
+                ; record-id MUST NOT contain "/" — path separators are not part of an id
+
+sha256-hex      = 64HEXDIG
+                ; HEXDIG values MUST be lowercase ("a"-"f" only, not "A"-"F")
+```
+
+Refs are matched at the *value* position inside a slot; they are not URLs and are not URI-decoded. There is no percent-encoding in the reference grammar.
+
+### C.2 Special form — Markdown body assets (§7.4)
+
+The reference `asset:content/<path>.md` is **syntactically** an `asset-ref` per C.1. Its specialness is purely **behavioural**: a Level 1 reader that recognises the `.md` extension on a resolved `asset:` ref SHOULD inline the file body as CommonMark + GFM (per §7.4 / §7.1.4). The grammar imposes no additional constraint.
+
+### C.3 Normalisation
+
+Before resolution (§7), all ref strings MUST be normalised as follows. Normalisation is a pre-step; the resolved reference object reports the *normalised* string.
+
+1. **Trim.** Leading and trailing ASCII whitespace MUST be stripped. (Internal whitespace is not legal per C.1 and remains invalid.)
+2. **Strip leading `./` in asset paths.** `asset:./images/x.jpg` MUST normalise to `asset:images/x.jpg`. Multiple leading `./` segments MUST all be stripped (`asset:././x.jpg` → `asset:x.jpg`).
+3. **Reject `..` segments.** An `asset-ref` whose path contains a `..` segment is INVALID. Readers MUST surface it as a ref-resolution warning and return `kind: "ref-missing"` (or the asset equivalent) without attempting filesystem traversal.
+4. **No trailing slash.** A trailing `/` on an `asset-path` is INVALID.
+5. **No empty segments.** Adjacent `/` characters (`asset:images//hero.jpg`) are INVALID.
+
+### C.4 Case sensitivity
+
+Reference strings are **case-sensitive**. `asset:Images/Hero.jpg` and `asset:images/hero.jpg` are different refs.
+
+On case-insensitive filesystems (default macOS HFS+/APFS, Windows NTFS in default configuration), a manifest entry that differs only in case from the slot's ref MUST be treated as a resolution failure, NOT a silent match. Implementations MUST surface a warning naming both the requested ref and the manifest entry.
+
+### C.5 Disambiguation by extension (asset vs. Markdown body)
+
+Both `asset:images/hero.jpg` and `asset:content/blog/post.md` use the same `asset-ref` grammar (C.1). They are not separate syntactic shapes. The reader determines whether to inline the body (§7.4) by inspecting the resolved file extension after normalisation:
+
+- `.md` → inline as CommonMark + GFM (Level 1 readers MAY skip inlining and MAY return the asset by path only; both are conformant).
+- Any other extension → no inlining; return the asset by path + manifest data.
+
+### C.6 Examples
+
+Valid refs:
+
+```
+asset:images/hero.jpg
+asset:fonts/inter-regular.woff2
+asset:content/blog/a-site-is-a-document.md
+asset:./images/logo.svg              ; normalises to "asset:images/logo.svg"
+ref:blog/a-site-is-a-document
+ref:authors/jane-doe
+block:sha256-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+Invalid refs (readers MUST treat each as ref-missing / ref-invalid and surface a warning):
+
+```
+asset:images//hero.jpg               ; empty segment
+asset:images/                        ; trailing slash
+asset:../etc/passwd                  ; ".." traversal
+asset:images/hero with space.jpg     ; internal whitespace
+ref:blog/a site is a document        ; record-id has internal whitespace
+ref:blog/2026-05-09/hello            ; record-id contains "/"
+block:sha256-ABCDEF...               ; uppercase hex
+block:sha256-abc                     ; not 64 hex chars
+```
+
+### C.7 Future-compatibility
+
+Additional reference shapes MAY be introduced in future spec versions. A Level 1 reader that encounters an unknown ref shape (e.g. `mosaic:`, `clear:`, etc.) MUST NOT crash; it MUST return `{ kind: "ref-unknown", ref: "<original-string>" }` and emit a warning. Writers (Level 2+) MUST preserve unknown ref strings unchanged on round-trip.
