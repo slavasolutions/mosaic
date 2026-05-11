@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "name": "Minimal Site",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "tokens": {
+    "color": {
+      "bg": "#ffffff",
+      "fg": "#111111",
+      "accent": "#0066cc"
+    },
+    "size": {
+      "h1": "2.5rem",
+      "body": "1rem"
+    }
+  },
+  "blockTypes": {
+    "heading": {
+      "variants": ["default"],
+      "slots": {
+        "text": { "type": "text", "required": true }
+      }
+    },
+    "paragraph": {
+      "variants": ["default"],
+      "slots": {
+        "body": { "type": "richtext", "required": true }
+      }
+    }
+  },
+  "collections": {}
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Second post — with a body file",
+  "slug": "second-post",
+  "publishedAt": "2026-05-08",
+  "excerpt": "Demonstrates how a richtext slot can hold a reference to a separate markdown file.",
+  "body": "asset:content/blog/second-post.md"
+}
