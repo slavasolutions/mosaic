@@ -259,9 +259,13 @@ A slot can declare `translatable: true` in its definition; the value becomes a l
 
 ### Globals (optional)
 
-Site-wide singletons (navigation, footer config, site identity) MAY live in `globals/*.json` rather than being duplicated on every page. Renderers inject globals at canonical positions (navigation at top, footer at bottom) unless a page explicitly overrides by providing the corresponding section in its own `sections[]`.
+Site-wide singletons declared in `mosaic.json#globals`. Each global has a `blockType`, an injection `position` (`page-top` / `page-bottom` / `page-side-left/right` / `before:<id>` / `after:<id>` / `before-section:N` / `after-section:N`), and points at an instance file like `globals/site-header.json`. Globals can `repeat: "every N sections"` for sticky asides or interstitials.
 
-This pattern is OPTIONAL — a Mosaic site may put the siteHeader as a per-page section, or as a global. Implementations SHOULD support both.
+Per-page override via `globalsOverride: { <id>: "off" | "override" | { instance: <path> } }` on the page record. Full grammar in [`spec.md`](./spec.md#9-globals-optional).
+
+### Overlays (optional)
+
+Off-flow elements that are NOT part of the document flow: lightboxes, modals, drawers, newsletter popups, cookie consent, exit-intent offers, toasts. Declared in `mosaic.json#overlays` with a `blockType`, a `trigger` (`manual` / `auto-image-links` / `scroll:N%` / `delay:Nms` / `exit-intent` / `first-visit`), and a `persist` window (`session` / `forever` / `dismissed-for-7d`). In-content links of the form `<a href="#overlay:<id>">` open the named overlay. Full grammar in [`spec.md`](./spec.md#10-overlays-optional).
 
 ### Encoding
 

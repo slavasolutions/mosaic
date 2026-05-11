@@ -320,15 +320,151 @@ If a `asset:` ref's path is not in the manifest, resolvers SHOULD still attempt 
 
 ## 9. Globals (OPTIONAL)
 
-`globals/<name>.json` holds site-wide singletons. Common names: `navigation`, `footer`, `siteIdentity`, `socialLinks`.
+Globals are named, schema-declared site-wide singletons that the renderer injects at canonical positions across every page. They are NOT hard-coded to specific names — sites declare any number of globals via `mosaic.json#globals`.
 
-Each global is a record matching a struct named `globals.<name>` declared in `mosaic.json#structs`, OR an ad-hoc object (Level 1 readers MUST tolerate both).
+### 9.1 Declaration
 
-Renderers SHOULD inject canonical globals at standard positions:
-- `globals/navigation` → top of every page unless that page explicitly includes a section of `blockType: "siteHeader"` or similar
-- `globals/footer` → bottom of every page unless overridden
+```json
+"globals": {
+  "<id>": {
+    "blockType": "<blockTypeName>",       // REQUIRED, references a declared blockType
+    "position": "<position-spec>",        // REQUIRED, where to inject
+    "instance": "<path-to-record>",       // REQUIRED, the actual content (e.g., "globals/site-header.json")
+    "repeat": <repeat-spec>,              // OPTIONAL, default false
+    "above": "<other-global-id>",         // OPTIONAL, relative ordering hint
+    "below": "<other-global-id>"          // OPTIONAL, relative ordering hint
+  }
+}
+```
 
-The injection rule is OPT-IN: a renderer that doesn't implement globals injection is still spec-compliant; consumer pages just have to include the singletons inline.
+### 9.2 Position vocabulary
+
+A `position` is one of:
+
+| Value | Meaning |
+|-------|---------|
+| `"page-top"` | Above all sections on every page (outside content column) |
+| `"page-bottom"` | Below all sections on every page |
+| `"page-side-left"` | Sidebar to the left of content (desktop); stacked at top (mobile) |
+| `"page-side-right"` | Sidebar to the right of content (desktop); stacked at top (mobile) |
+| `"before:<global-id>"` | Immediately before another global |
+| `"after:<global-id>"` | Immediately after another global |
+| `"before-section:<n>"` | Before section at index `n` |
+| `"after-section:<n>"` | After section at index `n` |
+
+Unknown positions MUST fall back to `"page-bottom"` and emit a warning.
+
+### 9.3 Repeat vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `false` (default) | Render once at the declared position |
+| `true` | Render at every defined position match (rarely useful) |
+| `"every N sections"` | Interleave a copy after every N sections |
+| `"every N pixels"` | (Renderer-specific) inject at scroll intervals — useful for sticky-side widgets on long pages |
+
+### 9.4 Per-page override
+
+A page record MAY include `globalsOverride: { ... }` to alter global rendering on that page only:
+
+```json
+{
+  "title": "...",
+  "globalsOverride": {
+    "<global-id>": "off",                          // disable for this page
+    "<global-id>": "override",                     // page provides its own section of same blockType; renderer must NOT also inject the global
+    "<global-id>": { "instance": "<other-path>" }  // swap to a different instance for this page
+  }
+}
+```
+
+`globalsOverride` is OPTIONAL and OPTIONAL to implement; a renderer that ignores it still complies.
+
+### 9.5 Instance content shape
+
+Each global's `instance` file holds a record matching the block type's slot shape (same as a section's `slots`). It is NOT wrapped in a section instance (no `id`, no `state`, no `publishedHash`) — just the slot values:
+
+```json
+// globals/site-header.json
+{
+  "logo": "Clear",
+  "nav": [
+    { "label": "Product", "href": "/product" },
+    { "label": "Docs",    "href": "/docs" }
+  ],
+  "ctaLabel": "Get started",
+  "ctaHref":  "/get-started"
+}
+```
+
+### 9.6 Conformance
+
+Globals support is OPTIONAL for Level 1 readers. A renderer that doesn't implement globals injection is still spec-compliant — consumer pages have to inline the singletons in `sections[]` instead.
+
+---
+
+## 10. Overlays (OPTIONAL)
+
+Overlays are off-flow page elements: lightboxes, popups, modals, drawers, toasts. They differ from sections (which live in the document flow) and globals (which inject at canonical document positions) — overlays render outside the document flow, often above it, and are typically triggered rather than always-visible.
+
+### 10.1 Declaration
+
+```json
+"overlays": {
+  "<id>": {
+    "blockType": "<overlayBlockType>",    // REQUIRED, e.g. lightbox, modal, drawer, newsletterPopup, cookieConsent, toast
+    "instance": "<path-to-record>",       // OPTIONAL, depends on block type (lightbox often has no instance)
+    "trigger": "<trigger-spec>",          // REQUIRED, when to surface
+    "persist": "<persist-spec>"           // OPTIONAL, how to remember dismissals
+  }
+}
+```
+
+### 10.2 Trigger vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `"manual"` | Only opens when an in-content link points at `#overlay:<id>` |
+| `"auto-image-links"` | Lightbox-specific — wraps every image/asset ref in a click-to-open handler |
+| `"scroll:N%"` / `"scroll:Npx"` | Triggers when page scrolled by N percent / N pixels |
+| `"delay:Nms"` | After N milliseconds on the page |
+| `"exit-intent"` | Mouse moves toward browser chrome / tab close |
+| `"first-visit"` | Only on the first page view per `persist` window |
+| `"every-visit"` | Every page view (use carefully) |
+
+### 10.3 Persist vocabulary
+
+How a dismissal is remembered:
+
+| Value | Meaning |
+|-------|---------|
+| `"session"` | Until page reload / tab close |
+| `"forever"` | Indefinitely (localStorage) |
+| `"dismissed-for-7d"` / `"dismissed-for-12h"` / etc. | Time-window dismissal |
+
+If `persist` is absent, default is `"session"` for ephemeral overlays (toast, exit-intent) and `"forever"` for declarative consents (cookieConsent).
+
+### 10.4 Canonical overlay block types
+
+Implementations MAY recognize and template these by name:
+
+- **`lightbox`** — image gallery overlay. Trigger usually `"auto-image-links"`. No `instance` required.
+- **`modal`** — generic centered modal with content slot.
+- **`drawer`** — slide-in side panel (variants: `"left"`, `"right"`).
+- **`newsletterPopup`** — email + name capture, dismissible.
+- **`cookieConsent`** — accept/reject + persist choice.
+- **`exitOffer`** — special-purpose modal triggered by `"exit-intent"`.
+- **`toast`** — small ephemeral notification.
+
+Unknown overlay block types render via the standard fallback ("missing template" — see §6).
+
+### 10.5 Manual trigger linking
+
+In-content links of the form `<a href="#overlay:<id>">` SHOULD open the named overlay when clicked, in implementations that support overlays. Renderers MAY implement this via JS / Web Components / `<dialog>` element / framework-specific portal — Mosaic doesn't specify the mechanism, only the URL contract.
+
+### 10.6 Conformance
+
+Overlays support is OPTIONAL for Level 1 readers. A pure-static or headless consumer MAY ignore the `overlays` declaration entirely.
 
 ---
 
