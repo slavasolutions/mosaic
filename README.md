@@ -334,6 +334,19 @@ The longer normative spec lives in [`spec.md`](./spec.md) — covers conformance
 
 Clear is one implementation. Others are encouraged.
 
+## Reference sites
+
+Live Mosaic sites, rendered to static HTML by the Clear engine. Each one is a folder of TOML and Markdown plus a `mosaic.json` schema — no framework, no build step:
+
+- **[Landing](https://clearcms.github.io/clear/)** — index of all five
+- [minimal-site](https://clearcms.github.io/clear/minimal-site/) — one page, one block
+- [blog-site](https://clearcms.github.io/clear/blog-site/) — Mosaic with a blog collection
+- [marketing-site](https://clearcms.github.io/clear/marketing-site/) — production-shape, 18 of the 24 canonical block types
+- [nonprofit-site](https://clearcms.github.io/clear/nonprofit-site/) — large Mosaic: 10 pages, 9 collections
+- [marketing-site-converted](https://clearcms.github.io/clear/marketing-site-converted/) — output of `clear import-astro` against an Astro source
+
+Rendered output is published from the `gh-pages` branch of [clearcms/clear](https://github.com/clearcms/clear).
+
 ## Other implementations
 
 _None yet._ If you build one, open an issue and we'll list it here.
