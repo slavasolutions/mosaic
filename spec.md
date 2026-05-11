@@ -559,11 +559,11 @@ ref:blog/2026-05-09/hello            ; "/" in record-id
 
 ## Appendix D — JSON Schema for `mosaic.json`
 
-A formal JSON Schema 2020-12 document for `mosaic.json` MAY be shipped at `mosaic.schema.json` in the repo root. v0.5 does NOT ship one; producing it is a candidate for a future MIP.
+A formal JSON Schema 2020-12 document for `mosaic.json` ships at [`mosaic.schema.json`](mosaic.schema.json) in the repo root. Both example documents under `examples/` validate against it.
 
-If shipped, the JSON Schema covers static shape only. Runtime semantics (e.g. "every `blockType` referenced in a section MUST be declared") still live in this spec text and are not encodable in JSON Schema.
+The JSON Schema covers static shape only — type, required-vs-optional, enum membership, and conditional requirements for slot type-specific fields (e.g. `type: "ref"` requires `refTo`). Runtime semantics that cross-reference parts of the document (e.g. "every `blockType` referenced in a section MUST be declared", "every `ref:` value MUST point at an existing record", "`tokenOverrides` MUST only override names declared at site level") are NOT encodable in JSON Schema and live in this spec text.
 
-Conformance: implementations MAY validate `mosaic.json` against a static schema as a fast-path. Implementations MUST still perform spec-text validation per §6 because any such schema is a subset.
+Conformance: implementations MAY validate `mosaic.json` against `mosaic.schema.json` as a fast-path for structural errors. Implementations MUST still perform spec-text validation per §6 because the schema is a strict subset.
 
 ---
 

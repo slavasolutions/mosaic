@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/slavasolutions/mosaic/main/mosaic.schema.json",
+  "title": "Mosaic site schema (mosaic.json)",
+  "description": "Static-shape validator for the mosaic.json file per spec.md §4 (v0.5). Covers shape only; runtime semantics (e.g. blockType references must resolve to a declared type, ref values must point at existing records) live in the spec text and are not encodable here. Implementations MAY validate against this schema as a fast-path; implementations MUST still perform spec-text validation per §6.",
+  "type": "object",
+  "required": ["meta", "blockTypes", "collections"],
+  "properties": {
+    "meta":        { "$ref": "#/$defs/Meta" },
+    "tokens":      { "$ref": "#/$defs/TokenMap" },
+    "blockTypes":  { "$ref": "#/$defs/BlockTypeMap" },
+    "collections": { "$ref": "#/$defs/CollectionMap" },
+    "structs":     { "$ref": "#/$defs/StructMap" },
+    "i18n":        { "$ref": "#/$defs/I18n" }
+  },
+
+  "$defs": {
+
+    "Meta": {
+      "type": "object",
+      "required": ["name", "mosaicVersion", "schemaVersion"],
+      "properties": {
+        "name":          { "type": "string", "minLength": 1 },
+        "mosaicVersion": { "type": "string", "pattern": "^\\d+\\.\\d+(\\.\\d+)?$" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "domain":        { "type": "string" }
+      }
+    },
+
+    "TokenMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+
+    "BlockTypeMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/BlockType" }
+    },
+
+    "BlockType": {
+      "type": "object",
+      "required": ["variants", "slots"],
+      "properties": {
+        "variants":    { "type": "array", "items": { "type": "string" } },
+        "slots":       { "$ref": "#/$defs/SlotMap" },
+        "description": { "type": "string" }
+      }
+    },
+
+    "SlotMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/SlotDef" }
+    },
+
+    "SlotDef": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["text", "richtext", "asset", "ref", "list", "struct", "code", "number", "boolean"]
+        },
+        "required":     { "type": "boolean" },
+        "description":  { "type": "string" },
+        "translatable": { "type": "boolean" },
+
+        "maxLength":    { "type": "number" },
+        "pattern":      { "type": "string" },
+
+        "format":       { "enum": ["markdown", "portable-text"] },
+
+        "accept": {
+          "type": "array",
+          "items": { "enum": ["image", "video", "audio", "font", "svg", "pdf", "any"] }
+        },
+
+        "refTo":        { "type": "string" },
+
+        "of":           { "$ref": "#/$defs/ListItemType" },
+        "min":          { "type": "number" },
+        "max":          { "type": "number" },
+
+        "name":         { "type": "string" },
+
+        "lang": { "type": "array", "items": { "type": "string" } },
+
+        "integer":      { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if":   { "properties": { "type": { "const": "ref"    } }, "required": ["type"] },
+          "then": { "required": ["refTo"] }
+        },
+        {
+          "if":   { "properties": { "type": { "const": "list"   } }, "required": ["type"] },
+          "then": { "required": ["of"] }
+        },
+        {
+          "if":   { "properties": { "type": { "const": "struct" } }, "required": ["type"] },
+          "then": { "required": ["name"] }
+        }
+      ]
+    },
+
+    "ListItemType": {
+      "oneOf": [
+        { "enum": ["text", "richtext", "asset", "code", "number", "boolean"] },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind":  { "enum": ["ref", "struct"] },
+            "refTo": { "type": "string" },
+            "name":  { "type": "string" }
+          },
+          "allOf": [
+            {
+              "if":   { "properties": { "kind": { "const": "ref"    } }, "required": ["kind"] },
+              "then": { "required": ["refTo"] }
+            },
+            {
+              "if":   { "properties": { "kind": { "const": "struct" } }, "required": ["kind"] },
+              "then": { "required": ["name"] }
+            }
+          ]
+        }
+      ]
+    },
+
+    "CollectionMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/Collection" }
+    },
+
+    "Collection": {
+      "type": "object",
+      "required": ["schema"],
+      "properties": {
+        "schema":     { "type": "string" },
+        "indexBy":    { "type": "string" },
+        "urlPattern": { "type": "string" },
+        "layout":     { "enum": ["single-file", "records-on-path"] }
+      }
+    },
+
+    "StructMap": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/SlotMap" }
+    },
+
+    "I18n": {
+      "type": "object",
+      "required": ["defaultLocale", "locales", "routing", "fallback"],
+      "properties": {
+        "defaultLocale": { "type": "string", "minLength": 1 },
+        "locales":       { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "routing":       { "enum": ["prefix", "subdomain", "domain"] },
+        "fallback":      { "enum": ["default", "404"] }
+      }
+    }
+  }
+}

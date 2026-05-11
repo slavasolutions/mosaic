@@ -15,6 +15,7 @@ See [`spec.md`](spec.md) for the normative specification. Read Appendix F first 
 ## What's here
 
 - [`spec.md`](spec.md) — normative specification (the source of truth)
+- [`mosaic.schema.json`](mosaic.schema.json) — JSON Schema 2020-12 for `mosaic.json` (static-shape validator; see spec Appendix D)
 - [`examples/`](examples/) — example Mosaic documents (document-only, no rendered output)
 - [`proposals/`](proposals/) — Mosaic Improvement Proposals (MIPs)
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose changes
