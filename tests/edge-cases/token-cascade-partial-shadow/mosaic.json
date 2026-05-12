@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "Token cascade partial shadow",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "tokens": {
+    "color": {
+      "bg":     "#ffffff",
+      "fg":     "#111111",
+      "accent": "#0066cc"
+    }
+  },
+  "blockTypes": {
+    "card": {
+      "variants": ["default"],
+      "slots": {
+        "title": { "type": "text", "required": true }
+      }
+    }
+  },
+  "collections": {}
+}

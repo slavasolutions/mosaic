@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "Impossible list bounds",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "blockTypes": {
+    "broken": {
+      "variants": ["default"],
+      "slots": {
+        "items": {
+          "type": "list",
+          "of": "text",
+          "min": 5,
+          "max": 3
+        }
+      }
+    }
+  },
+  "collections": {}
+}

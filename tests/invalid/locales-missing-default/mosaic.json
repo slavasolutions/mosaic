@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "name": "Default locale not in locales",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "blockTypes": {},
+  "collections": {},
+  "i18n": {
+    "defaultLocale": "en",
+    "locales": ["fr", "es"],
+    "routing": "prefix",
+    "fallback": "default"
+  }
+}

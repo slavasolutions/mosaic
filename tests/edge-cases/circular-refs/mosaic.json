@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "Circular references",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "structs": {
+    "blogPost": {
+      "title":   { "type": "text", "required": true },
+      "related": { "type": "ref", "refTo": "blog", "required": true }
+    }
+  },
+  "blockTypes": {
+    "postCard": {
+      "variants": ["default"],
+      "slots": {
+        "post": { "type": "ref", "refTo": "blog", "required": true }
+      }
+    }
+  },
+  "collections": {
+    "blog": { "schema": "blogPost", "urlPattern": "/blog/{slug}" }
+  }
+}

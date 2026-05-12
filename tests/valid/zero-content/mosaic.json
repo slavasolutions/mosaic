@@ -1,0 +1,9 @@
+{
+  "meta": {
+    "name": "Zero-content site",
+    "mosaicVersion": "0.5",
+    "schemaVersion": 1
+  },
+  "blockTypes": {},
+  "collections": {}
+}

@@ -1,0 +1,23 @@
+{
+  "title": "Index",
+  "slug": "/",
+  "status": "published",
+  "tokenOverrides": {
+    "color": {
+      "accent": "#ff0000"
+    }
+  },
+  "sections": [
+    {
+      "id": "intro",
+      "blockType": "card",
+      "slots": { "title": "Hello" },
+      "tokenOverrides": {
+        "color": {
+          "accent": "#00ff00",
+          "rebellion": "#purple"
+        }
+      }
+    }
+  ]
+}
