@@ -90,6 +90,16 @@ Examples in this repo are document-only. They consist of a valid `mosaic.json` p
 
 If an example needs to demonstrate rendering, that example belongs in the renderer's repo, not here.
 
+### When opening PRs on behalf of ClearCMS
+
+If you are an agent operating as part of the ClearCMS team (founder, agency, or a teammate working under ClearCMS context), open PRs as the **team lead** or under the **team identity** — not as a personal contributor account. This applies to:
+
+- git commit author name and email (use the team identity, e.g. `admin@clearcms.app`)
+- the GitHub user opening the PR via `gh` CLI or the web UI
+- any `Co-Authored-By:` trailers — keep them attributed to the team identity
+
+This keeps the implementation/maintainer story coherent: spec PRs from the ClearCMS team are visible as such, not as a sprawl of personal handles. Individual contributors outside the team open PRs under their own identity as normal.
+
 ### When unsure, ask
 
 Format spec work is high-stakes and slow-moving. A wrong feature added to v0.5 is hard to remove from v1.0. When the request is ambiguous, ask one clarifying question before proceeding.

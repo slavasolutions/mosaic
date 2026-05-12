@@ -1,6 +1,6 @@
 {
   "name": "@slavasolutions/mosaic-spec",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Mosaic — a portable document format for structured web content. This package ships the normative spec (spec.md) and the JSON Schema 2020-12 validator (mosaic.schema.json) for the mosaic.json site schema. The format is independent of any rendering engine; engines depend on this package read-only.",
   "license": "CC0-1.0",
   "main": "mosaic.schema.json",

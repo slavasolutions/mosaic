@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mosaic Viewer — structural inspector for mosaic.json</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Drag-drop a Mosaic mosaic.json to inspect its block types, slots, variants, tokens, collections, and i18n config. Pure inspection — no render, no validation.">
+<style>
+  :root {
+    --bg:#fafafa; --fg:#0a0a0a; --muted:#666; --accent:#0066cc;
+    --border:#e4e4e7; --panel:#fff; --code:#f4f4f5; --warn:#b45309;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0a0a0a; --fg:#fafafa; --muted:#a1a1aa; --accent:#3b82f6;
+            --border:#27272a; --panel:#18181b; --code:#27272a; --warn:#f59e0b; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+               font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header { padding: 24px; border-bottom: 1px solid var(--border); }
+  header h1 { margin:0 0 4px 0; font-size: 18px; font-weight: 600; }
+  header p  { margin:0; color: var(--muted); font-size: 13px; }
+  header a  { color: var(--accent); }
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  #dropzone {
+    border: 2px dashed var(--border); border-radius: 8px;
+    padding: 32px; text-align: center; color: var(--muted);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  #dropzone.hot { border-color: var(--accent); background: var(--panel); color: var(--fg); }
+  #dropzone input[type=file] { margin-left: 6px; }
+  #output { margin-top: 24px; display: none; }
+  #output.shown { display: block; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 16px; overflow: hidden;
+  }
+  .panel h2 {
+    margin: 0; padding: 12px 16px; font-size: 13px; font-weight: 600;
+    background: var(--code); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  }
+  .panel h2 .badge {
+    font-size: 11px; color: var(--muted); font-weight: 400;
+  }
+  .panel .body { padding: 12px 16px; }
+  .panel .body.empty { color: var(--muted); font-style: italic; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  code { background: var(--code); padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  .warning { color: var(--warn); font-size: 12px; margin-top: 8px; }
+  .footer-note {
+    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mosaic Viewer</h1>
+  <p>
+    Drop a <code>mosaic.json</code> to inspect its structure.
+    Pure inspection — no render, no validation, no network calls.
+    See <a href="https://github.com/slavasolutions/mosaic/blob/main/spec.md" target="_blank" rel="noopener">spec.md</a>
+    for the format.
+  </p>
+</header>
+
+<main>
+  <div id="dropzone">
+    Drop <code>mosaic.json</code> here, or
+    <input type="file" accept=".json,application/json">
+  </div>
+
+  <div id="output"></div>
+
+  <p class="footer-note">
+    Scope: structural inspection of <code>mosaic.json</code> only.
+    For validation, use <code>mosaic.schema.json</code> with any JSON Schema 2020-12 validator.
+    For rendering, use an engine (e.g. Clear). See <a href="../README.md">README</a>.
+  </p>
+</main>
+
+<script>
+  /*
+   * Mosaic Viewer — structural inspector for mosaic.json (spec §4).
+   * Vanilla JS, no deps, no network. Reads only the mosaic.json file the user drops.
+   * Does NOT walk the content/ tree, does NOT render, does NOT validate against the schema.
+   */
+
+  const $ = (sel) => document.querySelector(sel);
+  const dropzone = $('#dropzone');
+  const fileInput = dropzone.querySelector('input[type=file]');
+  const output = $('#output');
+
+  // --- file intake ---
+  ['dragenter','dragover'].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); dropzone.classList.add('hot');
+    }));
+  ['dragleave','drop'].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('hot');
+    }));
+  dropzone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (f) handleFile(f);
+  });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const doc = JSON.parse(reader.result);
+        render(doc, file.name);
+      } catch (err) {
+        renderError('Could not parse JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // --- rendering ---
+  function el(tag, attrs = {}, children = []) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'class') node.className = v;
+      else if (k === 'text') node.textContent = v;
+      else node.setAttribute(k, v);
+    }
+    for (const child of [].concat(children)) {
+      if (child == null) continue;
+      node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return node;
+  }
+
+  function panel(title, badge, bodyEl, emptyMessage) {
+    const head = el('h2', {}, [
+      el('span', { text: title }),
+      badge != null ? el('span', { class: 'badge', text: badge }) : null
+    ]);
+    const body = el('div', { class: 'body' + (bodyEl ? '' : ' empty') });
+    if (bodyEl) body.appendChild(bodyEl);
+    else body.textContent = emptyMessage || '— not declared —';
+    return el('div', { class: 'panel' }, [head, body]);
+  }
+
+  function table(headers, rows) {
+    const t = el('table');
+    const thead = el('thead', {}, el('tr', {}, headers.map(h => el('th', { text: h }))));
+    const tbody = el('tbody', {}, rows.map(r => el('tr', {}, r.map(c =>
+      el('td', {}, typeof c === 'string' ? c : c)
+    ))));
+    t.appendChild(thead); t.appendChild(tbody);
+    return t;
+  }
+
+  function code(text) { return el('code', { text: String(text) }); }
+
+  function render(doc, filename) {
+    output.textContent = '';
+    output.classList.add('shown');
+
+    output.appendChild(el('p', {
+      class: 'footer-note',
+      text: 'Loaded: ' + filename
+    }));
+
+    // 1. meta
+    output.appendChild(metaPanel(doc.meta));
+
+    // 2. block types
+    output.appendChild(blockTypesPanel(doc.blockTypes));
+
+    // 3. collections
+    output.appendChild(collectionsPanel(doc.collections));
+
+    // 4. tokens
+    output.appendChild(tokensPanel(doc.tokens));
+
+    // 5. structs
+    output.appendChild(structsPanel(doc.structs));
+
+    // 6. i18n
+    output.appendChild(i18nPanel(doc.i18n));
+
+    // 7. unknown top-level fields (preserved per §9.3)
+    const known = ['meta','tokens','blockTypes','collections','structs','i18n'];
+    const unknown = Object.keys(doc).filter(k => !known.includes(k));
+    if (unknown.length) {
+      output.appendChild(panel(
+        'Unknown top-level fields',
+        `${unknown.length} preserved`,
+        table(['Field', 'JSON type'],
+          unknown.map(k => [code(k), code(Array.isArray(doc[k]) ? 'array' : typeof doc[k])])),
+      ));
+    }
+  }
+
+  function renderError(msg) {
+    output.textContent = '';
+    output.classList.add('shown');
+    output.appendChild(panel('Error', null, el('div', { text: msg })));
+  }
+
+  function metaPanel(meta) {
+    if (!meta) return panel('Meta', null, null, 'mosaic.json is missing required "meta"');
+    const dl = el('dl', { class: 'kv' });
+    const add = (k, v) => {
+      if (v == null) return;
+      dl.appendChild(el('dt', { text: k }));
+      dl.appendChild(el('dd', {}, code(v)));
+    };
+    add('name',          meta.name);
+    add('mosaicVersion', meta.mosaicVersion);
+    add('schemaVersion', meta.schemaVersion);
+    add('domain',        meta.domain);
+    return panel('Meta', null, dl);
+  }
+
+  function blockTypesPanel(blockTypes) {
+    if (!blockTypes || !Object.keys(blockTypes).length) {
+      return panel('Block types', '0 declared', null, 'no blockTypes declared');
+    }
+    const rows = Object.entries(blockTypes).map(([name, def]) => {
+      const slots = def.slots || {};
+      const slotNames = Object.keys(slots);
+      const requiredCount = slotNames.filter(n => slots[n] && slots[n].required).length;
+      const variantsArr = Array.isArray(def.variants) ? def.variants : [];
+      const variantsLabel = variantsArr.length ? variantsArr.join(', ') : '—';
+      return [
+        code(name),
+        String(variantsArr.length) + (variantsArr.length ? ` (${variantsLabel})` : ''),
+        String(slotNames.length) + (requiredCount ? ` (${requiredCount} required)` : ''),
+        def.description || '—',
+      ];
+    });
+    return panel(
+      'Block types',
+      `${rows.length} declared`,
+      table(['Name', 'Variants', 'Slots', 'Description'], rows),
+    );
+  }
+
+  function collectionsPanel(collections) {
+    if (!collections || !Object.keys(collections).length) {
+      return panel('Collections', '0 declared', null, 'no collections declared');
+    }
+    const rows = Object.entries(collections).map(([name, def]) => [
+      code(name),
+      def.schema ? code(def.schema) : '—',
+      def.urlPattern || '—',
+      def.layout || 'records-on-path',
+      def.indexBy || '—',
+    ]);
+    return panel(
+      'Collections',
+      `${rows.length} declared`,
+      table(['Name', 'Schema (blockType)', 'urlPattern', 'Layout', 'indexBy'], rows),
+    );
+  }
+
+  function tokensPanel(tokens) {
+    if (!tokens || !Object.keys(tokens).length) {
+      return panel('Tokens', '0 groups', null, 'no tokens declared');
+    }
+    const groups = Object.keys(tokens);
+    const totalNames = groups.reduce((s, g) => s + Object.keys(tokens[g] || {}).length, 0);
+    const rows = [];
+    for (const g of groups) {
+      const names = Object.entries(tokens[g] || {});
+      for (const [name, value] of names) {
+        rows.push([code(g + '.' + name), code(value)]);
+      }
+    }
+    return panel(
+      'Tokens',
+      `${groups.length} group${groups.length === 1 ? '' : 's'}, ${totalNames} name${totalNames === 1 ? '' : 's'}`,
+      table(['Token', 'Value'], rows),
+    );
+  }
+
+  function structsPanel(structs) {
+    if (!structs || !Object.keys(structs).length) {
+      return panel('Structs', '0 declared', null, 'no structs declared');
+    }
+    const rows = Object.entries(structs).map(([name, slots]) => {
+      const slotNames = Object.keys(slots || {});
+      const requiredCount = slotNames.filter(n => slots[n] && slots[n].required).length;
+      return [
+        code(name),
+        String(slotNames.length) + (requiredCount ? ` (${requiredCount} required)` : ''),
+        slotNames.join(', ') || '—',
+      ];
+    });
+    return panel(
+      'Structs',
+      `${rows.length} declared`,
+      table(['Name', 'Slots', 'Slot names'], rows),
+    );
+  }
+
+  function i18nPanel(i18n) {
+    if (!i18n) return panel('i18n', null, null, 'not declared (site is single-locale)');
+    const dl = el('dl', { class: 'kv' });
+    const add = (k, v) => {
+      if (v == null) return;
+      dl.appendChild(el('dt', { text: k }));
+      dl.appendChild(el('dd', {}, code(Array.isArray(v) ? v.join(', ') : v)));
+    };
+    add('defaultLocale', i18n.defaultLocale);
+    add('locales',       i18n.locales);
+    add('routing',       i18n.routing);
+    add('fallback',      i18n.fallback);
+    const body = el('div', {}, dl);
+    // Surface the §4.8 cross-field hint (informational; this is a viewer, not a validator).
+    if (Array.isArray(i18n.locales) && i18n.defaultLocale &&
+        !i18n.locales.includes(i18n.defaultLocale)) {
+      body.appendChild(el('div', {
+        class: 'warning',
+        text: 'spec.md §4.8: i18n.locales MUST contain i18n.defaultLocale. (Inspection only — use a validator to confirm.)'
+      }));
+    }
+    return panel('i18n', null, body);
+  }
+</script>
+</body>
+</html>
