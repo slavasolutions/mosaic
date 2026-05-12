@@ -68,9 +68,11 @@ The reference implementation is [Clear](https://github.com/clearcms/clear) — a
 
 ## Status — honest version
 
-**v0.5 (draft).** This is a 0.x format. Breaking changes between minor versions are possible until v1.0.
+**v0.6 (draft).** This is a 0.x format. Breaking changes between minor versions are possible until v1.0.
 
-The v0.5 release is deliberately stripped: anything engine-scoped (canonical hashing, concurrent-merge semantics, layouts, globals, overlays, freeform absolute positioning) was cut from the format and pushed back into engines that need it. The spec is **smaller** than earlier drafts (v0.1, v0.2-draft, v0.3-proposal — preserved in git history). That's a feature: a portable format is only as portable as its narrowest waist.
+The v0.5 release was deliberately stripped: anything engine-scoped (canonical hashing, concurrent-merge semantics, layouts, globals, overlays, freeform absolute positioning) was cut from the format and pushed back into engines that need it. The spec is **smaller** than earlier drafts (v0.1, v0.2-draft, v0.3-proposal — preserved in git history). That's a feature: a portable format is only as portable as its narrowest waist.
+
+v0.6 is the first MIP-cycle release on top of that stripped baseline. It adds no features. It tightens §7.4 cycle resolution into a deterministic walk (MIP-0001), makes two previously-implicit cross-field constraints explicit (§4.5 `min ≤ max`; §4.8 `locales` ⊇ `defaultLocale`), and adds a worked example for the §4.2a token cascade. See [`spec.md`](spec.md) Appendix B for the full change log.
 
 If you're building production sites for clients, **don't standardize on Mosaic yet.** Wait until v1.0, or until at least one independent implementation exists alongside Clear. If you're exploring AI-driven content workflows, portable CMS alternatives, or content portability where format stability matters more than feature completeness, this is a reasonable place to prototype.
 
