@@ -143,6 +143,55 @@ Resolution rules:
 - Renderers SHOULD emit scoped CSS custom property declarations on the page wrapper (for page overrides) and the section wrapper (for section overrides) so nested elements inherit naturally. For non-CSS renderers, scoping is implementation-defined but MUST preserve last-write-wins precedence.
 - Token VALUE changes via `tokenOverrides` are non-breaking and MUST NOT bump `schemaVersion` (§9).
 
+#### 4.2a.1 Worked example: partial-shadow cascade (non-normative)
+
+Site, page, and section each declare overrides. The section's override map contains both a name the site declares (`color.accent`) and a name the site does NOT declare (`color.rebellion`).
+
+```jsonc
+// mosaic.json
+{
+  "tokens": {
+    "color": {
+      "bg":     "#ffffff",
+      "text":   "#0a0a0a",
+      "accent": "#0066cc"
+    }
+  }
+}
+```
+
+```jsonc
+// content/pages/home.json
+{
+  "tokenOverrides": {
+    "color": { "accent": "#ff0000" }
+  }
+}
+```
+
+```jsonc
+// section instance within that page
+{
+  "tokenOverrides": {
+    "color": {
+      "accent":    "#00ff00",
+      "rebellion": "#ff00ff"
+    }
+  }
+}
+```
+
+Resolved scope at the section level:
+
+| Token            | Site default | Page override | Section override | Resolved value | Notes |
+| ---              | ---          | ---           | ---              | ---            | --- |
+| `color.bg`       | `#ffffff`    | —             | —                | `#ffffff`      | inherited from site |
+| `color.text`     | `#0a0a0a`    | —             | —                | `#0a0a0a`      | inherited from site |
+| `color.accent`   | `#0066cc`    | `#ff0000`     | `#00ff00`        | `#00ff00`      | last-write-wins along cascade |
+| `color.rebellion`| (undeclared) | —             | `#ff00ff`        | (dropped)      | warning emitted; per-name drop |
+
+The unknown name `color.rebellion` does NOT prevent the section's `color.accent` override from applying. Validators MUST emit a warning for each dropped unknown name but MUST NOT refuse to resolve the section solely because of unknown names in its `tokenOverrides`.
+
 ### 4.3 `blockTypes`
 
 REQUIRED (MAY be empty). A `BlockType` MUST have:
@@ -178,6 +227,8 @@ Each `SlotDef` MAY have:
 | `code` | — | `lang: string[]` (whitelist) |
 | `number` | — | `min: number`, `max: number`, `integer: boolean` |
 | `boolean` | — | — |
+
+When both `min` and `max` are present on a `list` or `number` `SlotDef`, `min` MUST be ≤ `max`. A `SlotDef` violating this constraint is an INVALID schema; validators MUST reject it.
 
 #### 4.5.1 `richtext` value discriminator
 
@@ -217,11 +268,13 @@ Reusable shape definitions referenced from `slots[].of` (lists), `slots[].name` 
 ```
 {
   "defaultLocale": "en",                          // REQUIRED
-  "locales": ["en", "fr", "es"],                  // REQUIRED, includes defaultLocale
+  "locales": ["en", "fr", "es"],                  // REQUIRED, MUST include defaultLocale
   "routing": "prefix" | "subdomain" | "domain",   // REQUIRED
   "fallback": "default" | "404"                   // REQUIRED — applies to page-level only
 }
 ```
+
+`i18n.locales` MUST contain `i18n.defaultLocale`. A site declaring `i18n` and violating this constraint is an INVALID document; validators MUST reject it.
 
 A slot declared `translatable: true` carries a per-locale value map: `{ "<locale>": <value>, ... }`.
 
@@ -391,7 +444,22 @@ The reference `asset:content/<path>.md` is **syntactically** a §7.1 `asset-ref`
 
 ### 7.4 Circular references
 
-If A.slot refs B, and B.slot refs A: the resolver MUST detect the cycle and return one ref as `kind: "record"` with full data, the other as `kind: "ref-cycle"` with just `{ kind, ref }`. MUST NOT infinite-loop.
+Reference resolution walks the document depth-first starting from the **resolution entry point** — the record currently being resolved at the top of the call stack (typically a page record being rendered or a collection record being processed). Validators with no natural entry point MAY pick any record as entry point provided the choice is deterministic for that validator run.
+
+When the walk encounters a cycle:
+
+1. The first time a record is reached during a resolution walk, it MUST be returned as `kind: "record"` with full data.
+2. Any subsequent reference to that same record during the same resolution walk MUST be returned as `kind: "ref-cycle"` with just `{ kind, ref }`.
+
+This rule applies uniformly to:
+
+- **2-cycles** — A.slot refs B, B.slot refs A
+- **N-cycles** — A → B → C → ... → A for any N ≥ 2
+- **Self-cycles** — A.slot refs A directly
+
+Resolvers MUST NOT infinite-loop. Two conformant resolvers given the same document and the same entry point MUST return the same `record`-vs-`ref-cycle` assignment across all references in the walk.
+
+See MIP-0001 (`proposals/0001-cycle-resolution-determinism.md`) for the design rationale and alternatives considered.
 
 ### 7.5 Unknown reference shapes
 
@@ -486,6 +554,7 @@ Examples are document-only: a valid `mosaic.json` plus content tree. Rendering i
 
 ## Appendix B — Change log
 
+- **v0.6 (2026-05-12)** — first MIP-cycle release. Normative changes: §7.4 cycle resolution rewritten to be deterministic via depth-first walk from the resolution entry point; coverage extended from 2-cycles to N-cycles and self-cycles; explicit conformance language that two resolvers given the same document and entry point MUST produce the same `record`-vs-`ref-cycle` assignment (MIP-0001). Clarifications (no behavior change for already-conformant implementations): §4.5 makes the implicit `min ≤ max` rule explicit and normative for `list` and `number` slot definitions; §4.8 makes the implicit `locales MUST include defaultLocale` rule explicit and normative. Added §4.2a.1 worked example for the partial-shadow cascade case. No features added; no features removed.
 - **v0.5 (2026-05-11)** — stripped portable-format release. Drops from v0.3-proposal: layouts (§4.6a), globals (§9), overlays (§10), freeform block (§10b), outer/inner pattern (§10a), canonical hashing (§12), concurrent-edit merge semantics (§13), block content storage (§14). Carries forward: terminology, conformance levels (now L1+L2 only), file tree, mosaic.json shape, tokenOverrides cascade, page records, validation, silent skip, reference resolution (asset + ref only), asset manifest, versioning, unknown-field preservation, reference grammar (Appendix C). Removes Level 3 conformance and all CRDT-related text. Earlier drafts (v0.1, v0.2-draft, v0.3-proposal) are preserved in git history rather than in an archive directory.
 - **v0.3 (proposed, never adopted)** — full revision proposed in response to v0.2-draft peer review. Superseded by v0.5.
 - **v0.2 (2026-05-11, draft — superseded)** — additive: LayoutSpec body, tokenOverrides cascade, freeform block, silent skip, outer/inner pattern.
@@ -563,6 +632,8 @@ A formal JSON Schema 2020-12 document for `mosaic.json` ships at [`mosaic.schema
 
 The JSON Schema covers static shape only — type, required-vs-optional, enum membership, and conditional requirements for slot type-specific fields (e.g. `type: "ref"` requires `refTo`). Runtime semantics that cross-reference parts of the document (e.g. "every `blockType` referenced in a section MUST be declared", "every `ref:` value MUST point at an existing record", "`tokenOverrides` MUST only override names declared at site level") are NOT encodable in JSON Schema and live in this spec text.
 
+Cross-field value constraints within a single object — `list.min ≤ list.max` and `number.min ≤ number.max` (§4.5), `i18n.locales` MUST include `i18n.defaultLocale` (§4.8) — are also NOT encodable in standard JSON Schema 2020-12 and are not enforced by `mosaic.schema.json`. They are normative per the cited sections and validators MUST enforce them in addition to schema validation.
+
 Conformance: implementations MAY validate `mosaic.json` against `mosaic.schema.json` as a fast-path for structural errors. Implementations MUST still perform spec-text validation per §6 because the schema is a strict subset.
 
 ---
@@ -598,7 +669,8 @@ What was cut from v0.3-proposal and why. Listed so you can revisit any single on
 | **D-13** | Keep silent skip (§6.1). | Load-bearing for headless consumers. Without it, every reader has to implement every block type. |
 | **D-14** | Keep unknown-field preservation as a universal rule (§9.3). | Without this, no forward compatibility is possible. |
 | **D-15** | Keep the reference grammar appendix. | The single most-cited part of the v0.3 proposal in the peer review. Ref strings are the spec's wire format; they need to be specified exactly. |
+| **D-16** | Make §7.4 cycle resolution deterministic via depth-first walk from the entry point; cover N-cycles and self-cycles; mandate two conformant resolvers produce the same `record`-vs-`ref-cycle` assignment. | Stress-test discovery (`tests/edge-cases/circular-refs/`) found "one ref as record, the other as ref-cycle" was ambiguous: two conformant resolvers could disagree on the same document with a cycle. Determinism preserves the portability guarantee. Implemented via MIP-0001 (v0.6). |
 
 ---
 
-*End of v0.5. Read Appendix F first for what got cut.*
+*End of v0.6. Read Appendix F for the decision history. v0.5's "stripped release" decisions (D-1 through D-15) are preserved here; v0.6 added D-16.*

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/slavasolutions/mosaic/main/mosaic.schema.json",
   "title": "Mosaic site schema (mosaic.json)",
-  "description": "Static-shape validator for the mosaic.json file per spec.md §4 (v0.5). Covers shape only; runtime semantics (e.g. blockType references must resolve to a declared type, ref values must point at existing records) live in the spec text and are not encodable here. Implementations MAY validate against this schema as a fast-path; implementations MUST still perform spec-text validation per §6.",
+  "description": "Static-shape validator for the mosaic.json file per spec.md §4 (v0.6). Covers shape only. Not encodable here, and therefore NOT enforced by this schema, but normative per the cited spec sections: (a) cross-reference semantics — blockType references must resolve to a declared type (§6), ref values must point at existing records (§7.2), tokenOverrides MUST only override names declared at site level (§4.2a); (b) cross-field value constraints within a single object — list.min ≤ list.max and number.min ≤ number.max (§4.5), i18n.locales MUST include i18n.defaultLocale (§4.8). Implementations MAY validate against this schema as a fast-path; implementations MUST still perform spec-text validation per §6.",
   "type": "object",
   "required": ["meta", "blockTypes", "collections"],
   "properties": {
