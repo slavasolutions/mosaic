@@ -86,6 +86,7 @@ Read [`spec.md`](spec.md) Appendix F first if you want to know what got cut and 
 - [`mosaic.schema.json`](mosaic.schema.json) — JSON Schema 2020-12 for `mosaic.json` (static-shape validator; see spec Appendix D)
 - [`examples/`](examples/) — example Mosaic documents (document-only, no rendered output)
 - [`tests/`](tests/) — adversarial test cases; see [`STRESS-TESTS.md`](STRESS-TESTS.md) for the catalog
+- [`tools/`](tools/) — small, format-only dev utilities (currently: `viewer.html` — drag-drop structural inspector). See [`tools/README.md`](tools/README.md) for scope.
 - [`proposals/`](proposals/) — Mosaic Improvement Proposals (MIPs)
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to propose changes
 - [`AGENTS.md`](AGENTS.md) — rules for LLMs and coding agents working in this repo
