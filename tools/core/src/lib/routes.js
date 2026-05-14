@@ -1,19 +1,18 @@
-"use strict";
+// Route table builder: pages, collection-list mounts, redirects.
+// Emits: route.collision, collection.missing, redirect.loop,
+// redirect.collision, redirect.duplicate-from, redirect.duplicate-source.
 
-// Build the route table: pages, collection-list mounts, redirects.
-// Emit route.collision, collection.missing, redirect.loop, redirect.collision,
-// redirect.duplicate-from, redirect.duplicate-source.
-
-function buildRoutes(siteIndex, diagnostics) {
-  // Returns { routes: [...], byUrl: Map }, and mutates siteIndex with recordUrls and routedCollections.
+export function buildRoutes(site, diagnostics) {
+  // Returns { routes: [...], byUrl: Map }, mutates site.recordUrls
+  // and site.routedCollections.
   const routes = [];
-  const byUrl = new Map(); // url → { kind, target?, source? }
-  const recordUrls = siteIndex.recordUrls; // pre-existing map (records → url)
-  const routedCollections = siteIndex.routedCollections; // Set of collection names with routing mount
+  const byUrl = new Map();
+  const recordUrls = site.recordUrls;
+  const routedCollections = site.routedCollections;
 
-  // 1) Page routes (from pages/).
-  for (const pageRec of siteIndex.pages) {
-    const url = pageRec._url; // computed in walk
+  // 1) Pages.
+  for (const pageRec of site.pages) {
+    const url = pageRec._url;
     if (!url) continue;
     addRouteOrCollide(byUrl, routes, diagnostics, {
       url,
@@ -23,32 +22,28 @@ function buildRoutes(siteIndex, diagnostics) {
     });
   }
 
-  // 2) Collection-list mounts from pages' JSON.
-  for (const pageRec of siteIndex.pages) {
+  // 2) Collection-list mounts.
+  for (const pageRec of site.pages) {
     const sections = (pageRec.json && Array.isArray(pageRec.json.sections)) ? pageRec.json.sections : [];
     for (const sec of sections) {
       if (!sec || sec.type !== "collection-list") continue;
       const from = typeof sec.from === "string" ? sec.from : null;
       if (!from) continue;
-      // Expect "collections/<name>".
       let collName = null;
       if (from.startsWith("collections/")) {
         collName = from.slice("collections/".length);
-        // Strip any trailing slash.
         if (collName.endsWith("/")) collName = collName.slice(0, -1);
       }
-      const coll = collName ? siteIndex.collectionsByName.get(collName) : null;
+      const coll = collName ? site.collectionsByName.get(collName) : null;
       if (!coll) {
         diagnostics.structural(
           "mosaic.collection.missing",
           pageRec.sourcePath,
-          `collection-list references non-existent "${from}"`
+          `collection-list references non-existent "${from}"`,
         );
         continue;
       }
-      // routes default true; routes:false means list-only.
       const routesEnabled = sec.routes !== false;
-      // urlPattern default = <page-url>/{slug}
       const pageUrl = pageRec._url;
       const urlPattern = typeof sec.urlPattern === "string"
         ? sec.urlPattern
@@ -58,16 +53,12 @@ function buildRoutes(siteIndex, diagnostics) {
         routedCollections.add(collName);
         for (const rec of coll.records) {
           const detailUrl = urlPattern.replace(/\{slug\}/g, rec.slug);
-          // Same target via two routing mounts (same final URL+target) → mint once, no collision.
-          // Different URLs for the same record are handled because each mount yields its own URL.
-          // Two mounts pointing to the same URL but to different targets → collision.
           const targetId = `record:${collName}/${rec.slug}`;
           if (recordUrls.has(rec) && recordUrls.get(rec) !== detailUrl) {
-            // Record already routed at a different URL — that's "different URLs for same record" → collision per §3.5.
             diagnostics.structural(
               "mosaic.route.collision",
               `collections/${collName}/${rec.slug}`,
-              `record "${collName}/${rec.slug}" routed at both "${recordUrls.get(rec)}" and "${detailUrl}"`
+              `record "${collName}/${rec.slug}" routed at both "${recordUrls.get(rec)}" and "${detailUrl}"`,
             );
           } else {
             recordUrls.set(rec, detailUrl);
@@ -83,13 +74,11 @@ function buildRoutes(siteIndex, diagnostics) {
     }
   }
 
-  // 3) Redirects.
-  // Source precedence: redirects singleton wins over manifest.redirects (§3.6 + §8.7).
-  const manifestRedirects = Array.isArray(siteIndex.manifest && siteIndex.manifest.redirects)
-    ? siteIndex.manifest.redirects
+  // 3) Redirects: singleton wins over manifest.
+  const manifestRedirects = Array.isArray(site.manifest && site.manifest.redirects)
+    ? site.manifest.redirects
     : [];
-
-  const singletonRedirectsRec = siteIndex.singletonsByName.get("redirects");
+  const singletonRedirectsRec = site.singletonsByName.get("redirects");
   let singletonRules = null;
   if (singletonRedirectsRec && singletonRedirectsRec.json && Array.isArray(singletonRedirectsRec.json.rules)) {
     singletonRules = singletonRedirectsRec.json.rules;
@@ -101,12 +90,11 @@ function buildRoutes(siteIndex, diagnostics) {
       diagnostics.warning(
         "mosaic.redirect.duplicate-source",
         "mosaic.json",
-        "both mosaic.json#redirects and redirects singleton exist; singleton wins"
+        "both mosaic.json#redirects and redirects singleton exist; singleton wins",
       );
     }
   }
 
-  // Dedupe by `from`, keep first, warn on duplicates.
   const seenFrom = new Map();
   const finalRules = [];
   for (const rule of effectiveRules) {
@@ -115,7 +103,7 @@ function buildRoutes(siteIndex, diagnostics) {
       diagnostics.warning(
         "mosaic.redirect.duplicate-from",
         "mosaic.json",
-        `duplicate redirect from "${rule.from}"; keeping first`
+        `duplicate redirect from "${rule.from}"; keeping first`,
       );
       continue;
     }
@@ -123,21 +111,14 @@ function buildRoutes(siteIndex, diagnostics) {
     finalRules.push(rule);
   }
 
-  // Detect explicit /home override.
   const explicitHomeOverride = finalRules.some((r) => r.from === "/home");
-
-  // Add the automatic /home → / redirect unless explicitly overridden.
   if (!explicitHomeOverride) {
     finalRules.push({ from: "/home", to: "/", status: 301, _source: "auto" });
   }
 
-  // Build redirect graph for loop detection.
   const fromToMap = new Map();
-  for (const r of finalRules) {
-    fromToMap.set(r.from, r.to);
-  }
+  for (const r of finalRules) fromToMap.set(r.from, r.to);
 
-  // Detect loops once (per cycle, not per node). One diagnostic per cycle is enough.
   const cycledNodes = new Set();
   for (const rule of finalRules) {
     if (cycledNodes.has(rule.from)) continue;
@@ -146,36 +127,37 @@ function buildRoutes(siteIndex, diagnostics) {
       diagnostics.structural(
         "mosaic.redirect.loop",
         "mosaic.json",
-        `redirect cycle: ${cycle.join(" -> ")}`
+        `redirect cycle: ${cycle.join(" -> ")}`,
       );
       for (const node of cycle) cycledNodes.add(node);
     }
   }
 
+  const builtRedirects = [];
   for (const rule of finalRules) {
-    // Check collision with non-redirect routes.
     const existing = byUrl.get(rule.from);
     if (existing && existing.kind !== "redirect") {
       diagnostics.structural(
         "mosaic.redirect.collision",
         "mosaic.json",
-        `redirect "from" "${rule.from}" collides with a ${existing.kind} route`
+        `redirect "from" "${rule.from}" collides with a ${existing.kind} route`,
       );
       continue;
     }
-
-    const entry = {
-      url: rule.from,
-      kind: "redirect",
-      target: rule.to,
-    };
+    const entry = { url: rule.from, kind: "redirect", target: rule.to };
     if (!byUrl.has(rule.from)) {
       byUrl.set(rule.from, entry);
       routes.push(entry);
     }
+    builtRedirects.push({
+      from: rule.from,
+      to: rule.to,
+      status: typeof rule.status === "number" ? rule.status : 301,
+      source: rule._source || (singletonRules ? "singleton" : "manifest"),
+    });
   }
 
-  return { routes, byUrl };
+  return { routes, byUrl, redirects: builtRedirects };
 }
 
 function addRouteOrCollide(byUrl, routes, diagnostics, entry) {
@@ -185,35 +167,25 @@ function addRouteOrCollide(byUrl, routes, diagnostics, entry) {
     routes.push(entry);
     return;
   }
-  // Same URL — is it the same target?
-  if (existing.kind === entry.kind && existing.target === entry.target) {
-    return; // shared route, no collision
-  }
+  if (existing.kind === entry.kind && existing.target === entry.target) return;
   diagnostics.structural(
     "mosaic.route.collision",
     entry.sourcePath || entry.url,
-    `route "${entry.url}" claimed by multiple sources`
+    `route "${entry.url}" claimed by multiple sources`,
   );
 }
 
 function findCycle(start, fromToMap) {
-  // Walk from→to until we revisit a node or hit a node with no outgoing edge.
-  // Returns the cycle node list (in order) if a cycle is found, else null.
   let cursor = start;
   const order = [];
   const seenIndex = new Map();
   while (cursor !== undefined && cursor !== null) {
-    if (seenIndex.has(cursor)) {
-      // Cycle from seenIndex[cursor] to end of order.
-      return order.slice(seenIndex.get(cursor));
-    }
+    if (seenIndex.has(cursor)) return order.slice(seenIndex.get(cursor));
     seenIndex.set(cursor, order.length);
     order.push(cursor);
     if (!fromToMap.has(cursor)) return null;
     cursor = fromToMap.get(cursor);
-    if (order.length > 64) return order; // suspiciously long → treat as cycle
+    if (order.length > 64) return order;
   }
   return null;
 }
-
-module.exports = { buildRoutes };

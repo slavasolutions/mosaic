@@ -1,8 +1,8 @@
 {
   "name": "@mosaic/render-ref",
   "version": "0.8.0",
-  "description": "Reference wireframe renderer for Mosaic 0.8 sites. Zero dependencies.",
-  "type": "commonjs",
+  "description": "Reference wireframe renderer for Mosaic 0.8 sites. Depends on @mosaic/core.",
+  "type": "module",
   "bin": {
     "mosaic-render-ref": "./render.js"
   },

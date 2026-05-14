@@ -1,0 +1,22 @@
+{
+  "name": "@mosaic/core",
+  "version": "0.8.0",
+  "description": "Shared Mosaic 0.8 SDK: site walking, ref resolution, index building, validation. Zero runtime dependencies beyond Node stdlib.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./lib/walk": "./src/lib/walk.js",
+    "./lib/refs": "./src/lib/refs.js",
+    "./lib/locales": "./src/lib/locales.js",
+    "./lib/validate": "./src/lib/validate.js",
+    "./lib/routes": "./src/lib/routes.js",
+    "./lib/index": "./src/lib/index.js",
+    "./lib/manifest": "./src/lib/manifest.js",
+    "./lib/diagnostics": "./src/lib/diagnostics.js",
+    "./lib/markdown": "./src/lib/markdown.js"
+  },
+  "files": ["src", "README.md"],
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

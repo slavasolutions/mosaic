@@ -278,6 +278,17 @@ function flattenOne(v, assetBase) {
   if (v && typeof v === 'object' && typeof v.$asset === 'string') {
     return assetUrl(v.$asset, assetBase);
   }
+  // Relative refs (`./image.jpg` co-located with a folder-shape record) get
+  // emitted as `{ $rel, path }` stubs. Flatten image-like ones to URLs.
+  if (v && typeof v === 'object' && typeof v.$rel === 'string' && typeof v.path === 'string') {
+    if (/\.(jpe?g|png|gif|webp|svg|avif)$/i.test(v.path)) {
+      // path is site-relative, e.g. "collections/news/<slug>/hero.jpg".
+      // Emit a leading-slash URL so it works against the assetBase.
+      const base = assetBase.endsWith('/') ? assetBase.slice(0, -1) : assetBase;
+      return base + '/' + v.path;
+    }
+    return undefined;
+  }
   if (typeof v === 'string' && v.startsWith(ASSET_PREFIX)) {
     // load-site.js should have replaced these already, but a string slipping
     // through is harmless to handle.

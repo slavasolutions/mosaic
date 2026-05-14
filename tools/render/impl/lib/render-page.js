@@ -1,5 +1,3 @@
-"use strict";
-
 // Render one page (or record-as-page) into HTML.
 //
 // Wireframe-quality output. Each page produces:
@@ -18,15 +16,15 @@
 // Refs are deep-followed up to depth=1 to avoid cycles (spec leaves refs as
 // stubs in the index; we materialise URL + title here).
 
-const { escapeHtml, escapeAttr } = require("./html");
-const { renderMarkdown } = require("./markdown");
-const { isRefString, parseRef, resolveRef } = require("./resolve-refs");
+import { escapeHtml, escapeAttr } from "./html.js";
+import { renderMarkdown } from "./markdown.js";
+import { isRefString, parseRef, resolveRef } from "./resolve-refs.js";
 
 // ---------------------------------------------------------------------------
 // Entry point.
 // ---------------------------------------------------------------------------
 
-function renderPage({ kind, record, url, index, base }) {
+export function renderPage({ kind, record, url, index, base }) {
   // kind: "page" | "record"
   const siteName = index.site.name || "";
   const locale = index.site.locale || "en";
@@ -695,4 +693,3 @@ function cap(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-module.exports = { renderPage };

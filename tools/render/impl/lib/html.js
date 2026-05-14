@@ -1,8 +1,6 @@
-"use strict";
-
 // Tiny HTML helpers. No templating engine; just escaping + tag builders.
 
-function escapeHtml(value) {
+export function escapeHtml(value) {
   if (value === null || value === undefined) return "";
   const str = typeof value === "string" ? value : String(value);
   return str
@@ -14,7 +12,7 @@ function escapeHtml(value) {
 }
 
 // For attribute values where double quotes are the delimiter.
-function escapeAttr(value) {
+export function escapeAttr(value) {
   if (value === null || value === undefined) return "";
   const str = typeof value === "string" ? value : String(value);
   return str
@@ -25,7 +23,7 @@ function escapeAttr(value) {
 
 // Build attributes string from { key: value } map. Skips null/undefined.
 // Boolean true emits bare attribute; false skips.
-function attrs(map) {
+export function attrs(map) {
   if (!map) return "";
   const parts = [];
   for (const key of Object.keys(map)) {
@@ -44,11 +42,11 @@ function attrs(map) {
 // Use rawHtml(s) to opt out of escaping for already-safe HTML fragments.
 const RAW = Symbol("raw");
 
-function rawHtml(str) {
+export function rawHtml(str) {
   return { [RAW]: true, value: String(str) };
 }
 
-function html(strings, ...values) {
+export function html(strings, ...values) {
   let out = "";
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
@@ -66,10 +64,3 @@ function renderValue(v) {
   return escapeHtml(v);
 }
 
-module.exports = {
-  escapeHtml,
-  escapeAttr,
-  attrs,
-  html,
-  rawHtml,
-};

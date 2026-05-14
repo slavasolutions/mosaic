@@ -1,870 +1,122 @@
 // load-site.js
 //
-// Pure Node ESM loader that walks a Mosaic 0.8 folder and produces an
-// in-memory index conforming to SPEC §7.1, with adapter extras:
+// Astro Content Collection loader's site reader. Delegates to @mosaic/core
+// for the walk → routes → refs pipeline and then projects core's site shape
+// into the astro-loader's expected output (pre-rendered bodyHtml, locale
+// views in `localized`, ref stubs in record JSON, etc.).
 //
-//   - record.body holds raw markdown (per spec)
-//   - record.bodyHtml holds pre-rendered HTML for convenience (adapter extra)
-//
-// The implementation deliberately re-implements §7.2 instead of importing
-// the validator (which is CommonJS-only and oriented at CLI diagnostics).
-// Cross-validation against `tools/validate/impl` is straightforward because
-// both follow the same eight-step algorithm.
+// The marked-based markdown HTML renderer stays in this file because @mosaic/core
+// has zero runtime deps and the astro adapter genuinely needs HTML output.
 
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import { marked } from 'marked';
+import path from "node:path";
+import { marked } from "marked";
+
+import {
+  loadSite as coreLoadSite,
+  looksLikeRef,
+  parseRef,
+} from "../../core/src/index.js";
 
 // ---------------------------------------------------------------------------
 // Public entry
 // ---------------------------------------------------------------------------
 
 export async function loadSite(siteDir) {
-  const root = path.resolve(siteDir);
-  const ctx = newContext(root);
+  const sitePath = path.resolve(siteDir);
+  const core = coreLoadSite(sitePath);
 
-  await loadManifest(ctx);                   // §7.2 step 1
-  if (hasStructural(ctx)) return finalize(ctx); // can't proceed without manifest
+  // Walk every record's JSON and replace ref-looking strings with stubs.
+  // Core surfaces diagnostics for unresolved refs but doesn't mutate the data.
+  // The astro-loader has historically returned data with refs already
+  // replaced (so Zod schemas can look at $ref/$asset shapes), so we do the
+  // mutation here.
+  inlineRefStubs(core);
 
-  await indexAssets(ctx);                    // step 2
-  await indexSingletons(ctx);                // step 3
-  await indexCollections(ctx);               // step 4
-  await indexPages(ctx);                     // step 5
-  buildRoutes(ctx);                          // step 6
-  resolveRefs(ctx);                          // step 7
+  // Compute per-locale views with pre-rendered HTML for record bodies and
+  // attach to each record as `.localized[<locale>] = { data, body, bodyHtml, title }`.
+  attachLocalizedViews(core);
 
-  return finalize(ctx);                      // step 8
+  const finalized = finalize(core);
+  return finalized;
 }
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
-function newContext(root) {
-  return {
-    root,
-    manifest: null,
-    site: { name: '', locale: undefined, url: undefined },
-    // MIP-0014: locales resolved from manifest. defaultLocale always set
-    // (defaults to "en"); locales always at least [defaultLocale].
-    defaultLocale: 'en',
-    locales: ['en'],
-    pages: {},          // url -> page record
-    collections: {},    // name -> { type, records: { slug -> record } }
-    singletons: {},     // name -> record
-    assets: {},         // path-under-images -> meta
-    tokens: null,
-    routes: {},         // url -> { kind, target }
-    redirects: [],      // [{ from, to, status, source }]
-    diagnostics: []
-  };
-}
-
-function hasStructural(ctx) {
-  return ctx.diagnostics.some((d) => d.severity === 'structural');
-}
-
-function diag(ctx, severity, code, message, source) {
-  ctx.diagnostics.push({ severity, code, message, source });
-}
-
-// ---------------------------------------------------------------------------
-// Step 1 — manifest
-// ---------------------------------------------------------------------------
-
-async function loadManifest(ctx) {
-  const file = path.join(ctx.root, 'mosaic.json');
-  let raw;
-  try {
-    raw = await fs.readFile(file, 'utf8');
-  } catch {
-    diag(ctx, 'structural', 'mosaic.config.invalid', 'mosaic.json not found', 'mosaic.json');
-    return;
-  }
-  let json;
-  try {
-    json = JSON.parse(raw);
-  } catch (err) {
-    diag(ctx, 'structural', 'mosaic.config.invalid', `mosaic.json unparseable: ${err.message}`, 'mosaic.json');
-    return;
-  }
-  if (!json || typeof json !== 'object') {
-    diag(ctx, 'structural', 'mosaic.config.invalid', 'mosaic.json must be an object', 'mosaic.json');
-    return;
-  }
-  ctx.manifest = json;
-  ctx.site = { ...(json.site || { name: '' }) };
-  if (!ctx.site.name) {
-    diag(ctx, 'drift', 'mosaic.config.invalid', 'mosaic.json#site.name is required', 'mosaic.json');
-  }
-  // MIP-0014: resolve defaultLocale + locales for the rest of the pipeline.
-  // defaultLocale wins over the legacy `locale` field but we keep both
-  // available for round-trip safety (MIP-0009).
-  const fromManifest = ctx.site.defaultLocale || ctx.site.locale || 'en';
-  ctx.defaultLocale = fromManifest;
-  let locales = Array.isArray(ctx.site.locales) ? ctx.site.locales.slice() : null;
-  if (!locales || locales.length === 0) {
-    locales = [fromManifest];
-  }
-  if (!locales.includes(fromManifest)) {
-    diag(ctx, 'drift', 'mosaic.locale.unknown-default',
-      `site.defaultLocale "${fromManifest}" is not listed in site.locales`, 'mosaic.json');
-    locales.unshift(fromManifest);
-  }
-  ctx.locales = locales;
-}
-
-// ---------------------------------------------------------------------------
-// Step 2 — assets
-// ---------------------------------------------------------------------------
-
-async function indexAssets(ctx) {
-  const imgDir = path.join(ctx.root, 'images');
-  if (!(await exists(imgDir))) return;
-
-  // manifest first
-  const manifestPath = path.join(imgDir, 'manifest.json');
-  let manifest = {};
-  if (await exists(manifestPath)) {
-    try {
-      manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
-    } catch (err) {
-      diag(ctx, 'drift', 'mosaic.config.invalid', `images/manifest.json unparseable: ${err.message}`, 'images/manifest.json');
-      manifest = {};
-    }
-  }
-
-  for (const [rel, meta] of Object.entries(manifest)) {
-    ctx.assets[rel] = { ...meta };
-  }
-
-  // walk disk; flag unmanifested files
-  for await (const file of walk(imgDir)) {
-    const rel = path.relative(imgDir, file).split(path.sep).join('/');
-    if (rel === 'manifest.json') continue;
-    if (rel.startsWith('.') || rel.startsWith('_')) continue;
-    if (!(rel in ctx.assets)) {
-      diag(ctx, 'warning', 'mosaic.asset.unmanifested', `Asset on disk but not in manifest: images/${rel}`, `images/${rel}`);
-      ctx.assets[rel] = {};
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 3 — singletons
-// ---------------------------------------------------------------------------
-
-async function indexSingletons(ctx) {
-  const decls = ctx.manifest?.singletons || {};
-  for (const [name, decl] of Object.entries(decls)) {
-    if (RESERVED_ROOT_NAMES.has(name)) {
-      diag(ctx, 'structural', 'mosaic.singleton.reserved',
-        `Singleton "${name}" collides with a reserved root name`, 'mosaic.json');
-      continue;
-    }
-    const rec = await loadRootRecord(ctx, name);
-    if (!rec) {
-      diag(ctx, 'structural', 'mosaic.singleton.missing',
-        `Singleton "${name}" declared but no file at the site root`, 'mosaic.json');
-      continue;
-    }
-    rec.type = decl?.type;
-    ctx.singletons[name] = rec;
-    if (name === 'tokens') {
-      // tokens singleton — payload is the DTCG object directly
-      ctx.tokens = rec.data || null;
-    }
-  }
-  if (!ctx.tokens && ctx.manifest?.tokens) {
-    ctx.tokens = ctx.manifest.tokens;
-  }
-}
-
-const RESERVED_ROOT_NAMES = new Set([
-  'mosaic.json', 'README.md', 'LICENSE', 'CHANGELOG.md', 'CONTRIBUTING.md',
-  'AGENTS.md', 'pages', 'collections', 'images'
-]);
-
-async function loadRootRecord(ctx, name) {
-  const jsonPath = path.join(ctx.root, `${name}.json`);
-  const mdPath = path.join(ctx.root, `${name}.md`);
-  const hasJson = await exists(jsonPath);
-  const hasMd = await exists(mdPath);
-  if (!hasJson && !hasMd) return null;
-  return buildRecord(ctx, {
-    slug: name,
-    shape: hasJson && hasMd ? 'pair' : hasJson ? 'json' : 'md',
-    jsonPath: hasJson ? jsonPath : null,
-    mdPath: hasMd ? mdPath : null,
-    here: ctx.root
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Step 4 — collections
-// ---------------------------------------------------------------------------
-
-async function indexCollections(ctx) {
-  const colDir = path.join(ctx.root, 'collections');
-  if (!(await exists(colDir))) return;
-  const entries = await fs.readdir(colDir, { withFileTypes: true });
-  for (const ent of entries) {
-    if (!ent.isDirectory()) continue;
-    if (ent.name.startsWith('.') || ent.name.startsWith('_')) continue;
-    const name = ent.name;
-    const type = ctx.manifest?.collections?.[name]?.type;
-    const records = await loadRecordsInDir(ctx, path.join(colDir, name), `collections/${name}`);
-    ctx.collections[name] = { type, records };
-  }
-}
-
-async function loadRecordsInDir(ctx, dir, relForDiag) {
-  const out = {};
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-
-  // group sibling .json + .md by stem and locale. MIP-0014: a file
-  // `<slug>.<locale>.{md,json}` where <locale> appears in site.locales is
-  // a per-locale variant of `<slug>.{md,json}` in the same dir. The
-  // canonical record key in `out` is the slug; per-locale source paths
-  // live on a `localeFiles` map alongside the base ones.
-  // stems: stem -> {
-  //   json, md,                          // base (no-locale) paths
-  //   localeJson: { <locale>: <path> },  // per-locale JSON sidecars
-  //   localeMd:   { <locale>: <path> }   // per-locale markdown bodies
-  // }
-  const stems = new Map();
-  const folders = [];
-  for (const ent of entries) {
-    if (ent.name.startsWith('.') || ent.name.startsWith('_')) continue;
-    if (ent.isDirectory()) {
-      folders.push(ent.name);
-      continue;
-    }
-    if (!ent.isFile()) continue;
-    if (ent.name === 'index.md' || ent.name === 'index.json') continue; // §2.6
-    const ext = path.extname(ent.name);
-    if (ext !== '.json' && ext !== '.md') continue;
-    const stemFull = path.basename(ent.name, ext);
-    const parsed = parseLocaleStem(stemFull, ctx.locales);
-    const stem = parsed.slug;
-    const locale = parsed.locale;
-    const cur = stems.get(stem) || {};
-    if (locale === null) {
-      if (ext === '.json') cur.json = path.join(dir, ent.name);
-      else cur.md = path.join(dir, ent.name);
-    } else {
-      cur.localeJson = cur.localeJson || {};
-      cur.localeMd   = cur.localeMd || {};
-      if (ext === '.json') cur.localeJson[locale] = path.join(dir, ent.name);
-      else cur.localeMd[locale] = path.join(dir, ent.name);
-    }
-    stems.set(stem, cur);
-  }
-
-  for (const [stem, sides] of stems.entries()) {
-    if (!validSlug(stem)) {
-      diag(ctx, 'structural', 'mosaic.slug.invalid',
-        `Invalid slug "${stem}"`, `${relForDiag}/${stem}`);
-      continue;
-    }
-    const lc = stem.toLowerCase();
-    if (lc !== stem) {
-      diag(ctx, 'structural', 'mosaic.slug.case',
-        `Slug "${stem}" must be lowercase`, `${relForDiag}/${stem}`);
-    }
-    const hasBase = !!(sides.json || sides.md);
-    const hasLocale =
-      !!(sides.localeJson && Object.keys(sides.localeJson).length) ||
-      !!(sides.localeMd && Object.keys(sides.localeMd).length);
-    if (!hasBase && !hasLocale) continue;
-    const rec = await buildRecord(ctx, {
-      slug: stem,
-      shape: sides.json && sides.md ? 'pair' : sides.json ? 'json' : 'md',
-      jsonPath: sides.json || null,
-      mdPath: sides.md || null,
-      localeJson: sides.localeJson || {},
-      localeMd: sides.localeMd || {},
-      here: dir
-    });
-    out[stem] = rec;
-  }
-
-  for (const folder of folders) {
-    if (!validSlug(folder)) {
-      diag(ctx, 'structural', 'mosaic.slug.invalid',
-        `Invalid slug "${folder}"`, `${relForDiag}/${folder}`);
-      continue;
-    }
-    const fdir = path.join(dir, folder);
-    const idxJson = path.join(fdir, 'index.json');
-    const idxMd = path.join(fdir, 'index.md');
-    const hasJson = await exists(idxJson);
-    const hasMd = await exists(idxMd);
-    if (!hasJson && !hasMd) {
-      diag(ctx, 'structural', 'mosaic.record.empty',
-        `Folder record "${folder}" has no index.md or index.json`, `${relForDiag}/${folder}`);
-      continue;
-    }
-    const rec = await buildRecord(ctx, {
-      slug: folder,
-      shape: 'folder',
-      jsonPath: hasJson ? idxJson : null,
-      mdPath: hasMd ? idxMd : null,
-      here: fdir
-    });
-    out[folder] = rec;
-  }
-
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Step 5 — pages
-// ---------------------------------------------------------------------------
-
-async function indexPages(ctx) {
-  const pagesDir = path.join(ctx.root, 'pages');
-  if (!(await exists(pagesDir))) return;
-  await indexPagesRecursive(ctx, pagesDir, '');
-}
-
-async function indexPagesRecursive(ctx, dir, urlPrefix) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-
-  const stems = new Map();
-  const folders = [];
-  for (const ent of entries) {
-    if (ent.name.startsWith('.') || ent.name.startsWith('_')) continue;
-    if (ent.isDirectory()) {
-      folders.push(ent.name);
-      continue;
-    }
-    if (!ent.isFile()) continue;
-    if (urlPrefix === '' && (ent.name === 'home.md' || ent.name === 'home.json')) {
-      diag(ctx, 'structural', 'mosaic.home.reserved',
-        `pages/home.* is reserved; use pages/index.* for "/"`, `pages/${ent.name}`);
-      continue;
-    }
-    const ext = path.extname(ent.name);
-    const stem = path.basename(ent.name, ext);
-    if (ext === '.json') {
-      stems.set(stem, { ...(stems.get(stem) || {}), json: path.join(dir, ent.name) });
-    } else if (ext === '.md') {
-      stems.set(stem, { ...(stems.get(stem) || {}), md: path.join(dir, ent.name) });
-    }
-  }
-
-  for (const [stem, sides] of stems.entries()) {
-    if (stem !== 'index' && !validSlug(stem)) {
-      diag(ctx, 'structural', 'mosaic.slug.invalid',
-        `Invalid page slug "${stem}"`, `pages${urlPrefix}/${stem}`);
-      continue;
-    }
-    let url;
-    if (stem === 'index') {
-      url = urlPrefix === '' ? '/' : urlPrefix;
-    } else {
-      url = `${urlPrefix}/${stem}`;
-    }
-    const rec = await buildRecord(ctx, {
-      slug: stem,
-      shape: sides.json && sides.md ? 'pair' : sides.json ? 'json' : 'md',
-      jsonPath: sides.json || null,
-      mdPath: sides.md || null,
-      here: dir
-    });
-    rec.url = url;
-    ctx.pages[url] = rec;
-  }
-
-  for (const folder of folders) {
-    if (urlPrefix === '' && folder === 'home') {
-      diag(ctx, 'structural', 'mosaic.home.reserved',
-        `pages/home/ is reserved; use pages/index.* for "/"`, `pages/home`);
-      continue;
-    }
-    if (!validSlug(folder)) {
-      diag(ctx, 'structural', 'mosaic.slug.invalid',
-        `Invalid page slug "${folder}"`, `pages${urlPrefix}/${folder}`);
-      continue;
-    }
-    const fdir = path.join(dir, folder);
-    const idxJson = path.join(fdir, 'index.json');
-    const idxMd = path.join(fdir, 'index.md');
-    const hasIdx = (await exists(idxJson)) || (await exists(idxMd));
-    if (hasIdx) {
-      const url = `${urlPrefix}/${folder}`;
-      const rec = await buildRecord(ctx, {
-        slug: folder,
-        shape: 'folder',
-        jsonPath: (await exists(idxJson)) ? idxJson : null,
-        mdPath: (await exists(idxMd)) ? idxMd : null,
-        here: fdir
-      });
-      rec.url = url;
-      ctx.pages[url] = rec;
-    }
-    // nested pages
-    await indexPagesRecursive(ctx, fdir, `${urlPrefix}/${folder}`);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 6 — routes
-// ---------------------------------------------------------------------------
-
-function buildRoutes(ctx) {
-  // page routes first
-  for (const [url, page] of Object.entries(ctx.pages)) {
-    if (ctx.routes[url]) {
-      diag(ctx, 'structural', 'mosaic.route.collision',
-        `Two pages claim ${url}`, url);
-      continue;
-    }
-    ctx.routes[url] = { kind: 'page', target: url };
-  }
-
-  // collection-list mounts → record routes
-  for (const [pageUrl, page] of Object.entries(ctx.pages)) {
-    const sections = page.data?.sections || [];
-    for (const section of sections) {
-      if (!section || section.type !== 'collection-list') continue;
-      const fromPath = section.from || '';
-      const m = /^collections\/([^/]+)$/.exec(fromPath);
-      if (!m) {
-        diag(ctx, 'structural', 'mosaic.collection.missing',
-          `collection-list#from must be "collections/<name>", got "${fromPath}"`, pageUrl);
-        continue;
-      }
-      const cname = m[1];
-      const col = ctx.collections[cname];
-      if (!col) {
-        diag(ctx, 'structural', 'mosaic.collection.missing',
-          `collection-list references missing collection "${cname}"`, pageUrl);
-        continue;
-      }
-      if (section.routes === false) continue;
-      const pattern = section.urlPattern || `${pageUrl === '/' ? '' : pageUrl}/{slug}`;
-      for (const slug of Object.keys(col.records)) {
-        const recUrl = pattern.replace('{slug}', slug);
-        const existing = ctx.routes[recUrl];
-        const target = `${cname}/${slug}`;
-        if (existing) {
-          if (existing.kind === 'record' && existing.target === target) {
-            // identical mount, fine
-          } else {
-            diag(ctx, 'structural', 'mosaic.route.collision',
-              `Route ${recUrl} claimed by multiple sources`, recUrl);
-          }
-          continue;
-        }
-        ctx.routes[recUrl] = { kind: 'record', target };
-        col.records[slug].url = recUrl;
+function inlineRefStubs(site) {
+  for (const rec of site.allRecords) {
+    if (!rec.json) continue;
+    rec.json = walkAndReplace(rec.json, (val) => buildStubFor(val, site, rec));
+    rec.data = rec.json;
+    // Update localized data the same way.
+    if (rec.localized) {
+      for (const [, view] of Object.entries(rec.localized)) {
+        view.data = walkAndReplace(view.data, (val) => buildStubFor(val, site, rec));
       }
     }
   }
-
-  // unrouted collection records keep url = null (already so by default)
-
-  // explicit redirects (manifest)
-  const declared = ctx.manifest?.redirects || [];
-  for (const r of declared) {
-    addRedirect(ctx, r.from, r.to, r.status || 301, 'manifest');
-  }
-  // redirects singleton trumps manifest if present
-  const redirSingleton = ctx.singletons.redirects;
-  if (redirSingleton?.data?.rules) {
-    if (declared.length > 0) {
-      diag(ctx, 'warning', 'mosaic.redirect.duplicate-source',
-        `Both mosaic.json#redirects and redirects singleton exist; singleton wins`, 'redirects.json');
-    }
-    // singleton wins; rebuild
-    ctx.redirects = [];
-    for (const r of redirSingleton.data.rules) {
-      addRedirect(ctx, r.from, r.to, r.status || 301, 'singleton');
-    }
-  }
-
-  // automatic /home → /
-  if (!ctx.redirects.some((r) => r.from === '/home')) {
-    addRedirect(ctx, '/home', '/', 301, 'auto');
-  }
-
-  // detect redirect collisions and loops. A "real route" is one whose kind
-  // is page or record — the redirect's own entry in ctx.routes does not
-  // count. The /home → / auto redirect is exempt (it points at a real
-  // page route by spec design).
-  const fromSet = new Map();
-  for (const r of ctx.redirects) {
-    const existing = ctx.routes[r.from];
-    if (existing && existing.kind !== 'redirect' && r.source !== 'auto') {
-      diag(ctx, 'structural', 'mosaic.redirect.collision',
-        `Redirect from ${r.from} collides with a real route`, r.from);
-    }
-    fromSet.set(r.from, r.to);
-  }
-  for (const r of ctx.redirects) {
-    if (followsLoop(fromSet, r.from)) {
-      diag(ctx, 'structural', 'mosaic.redirect.loop',
-        `Redirect chain starting at ${r.from} loops`, r.from);
-    }
-  }
 }
 
-function addRedirect(ctx, from, to, status, source) {
-  ctx.redirects.push({ from, to, status, source });
-  if (!ctx.routes[from]) {
-    ctx.routes[from] = { kind: 'redirect', target: to };
-  }
-}
-
-function followsLoop(map, start) {
-  const seen = new Set();
-  let cur = start;
-  while (map.has(cur)) {
-    if (seen.has(cur)) return true;
-    seen.add(cur);
-    cur = map.get(cur);
-  }
-  return false;
-}
-
-// ---------------------------------------------------------------------------
-// Step 7 — ref resolution
-// ---------------------------------------------------------------------------
-
-function resolveRefs(ctx) {
-  for (const page of Object.values(ctx.pages)) {
-    walkValues(page.data, (val, here) => maybeResolveRef(ctx, val, page, here), page.here);
-  }
-  for (const col of Object.values(ctx.collections)) {
-    for (const rec of Object.values(col.records)) {
-      walkValues(rec.data, (val, here) => maybeResolveRef(ctx, val, rec, here), rec.here);
-    }
-  }
-  for (const rec of Object.values(ctx.singletons)) {
-    walkValues(rec.data, (val, here) => maybeResolveRef(ctx, val, rec, here), rec.here);
-  }
-}
-
-function maybeResolveRef(ctx, value, owner, here) {
-  if (typeof value !== 'string') return value;
-  if (value.startsWith('ref:')) return resolveRefStub(ctx, value.slice(4), 'ref');
-  if (value.startsWith('asset:')) return resolveAssetStub(ctx, value.slice(6));
-  if (value.startsWith('./')) {
-    if (!here) {
-      diag(ctx, 'structural', 'mosaic.relative.invalid',
-        `Relative ref "${value}" in a record without a JSON file`, owner.slug);
-      return value;
-    }
-    return resolveRelativeStub(ctx, value.slice(2), here);
-  }
-  return value;
-}
-
-function resolveRefStub(ctx, addrAndSel /* string */) {
-  const [addr, selector] = splitSelector(addrAndSel);
-  const slash = addr.indexOf('/');
-  let target, url, title;
-  if (slash < 0) {
-    target = ctx.singletons[addr];
-    title = target ? resolveTitle(target) : addr;
-    url = null;
-  } else {
-    const cname = addr.slice(0, slash);
-    const slug = addr.slice(slash + 1);
-    const col = ctx.collections[cname];
-    if (col && col.records[slug]) {
-      target = col.records[slug];
-      title = resolveTitle(target);
-      url = target.url || null;
-    } else {
-      diag(ctx, 'drift', 'mosaic.ref.unresolved',
-        `ref:${addr} does not resolve`, addr);
-      title = slug || addr;
-      url = null;
-    }
-  }
-  const stub = { $ref: addr, url, title };
-  if (selector) stub.selector = selector;
-  return stub;
-}
-
-function resolveAssetStub(ctx, p) {
-  // strip optional "images/" prefix that authors include
-  let rel = p;
-  if (rel.startsWith('images/')) rel = rel.slice(7);
-  const meta = ctx.assets[rel];
-  if (!meta) {
-    diag(ctx, 'drift', 'mosaic.ref.unresolved',
-      `asset:images/${rel} not found`, `images/${rel}`);
-  }
-  return {
-    $asset: `images/${rel}`,
-    ...(meta || {})
-  };
-}
-
-function resolveRelativeStub(ctx, relPath, here) {
-  const abs = path.resolve(here, relPath);
-  const rel = path.relative(ctx.root, abs).split(path.sep).join('/');
-  return { $rel: relPath, path: rel };
-}
-
-function splitSelector(s) {
-  const i = s.indexOf('@');
-  return i < 0 ? [s, null] : [s.slice(0, i), s.slice(i + 1)];
-}
-
-function walkValues(node, fn, here) {
+function walkAndReplace(node, fn) {
   if (Array.isArray(node)) {
-    for (let i = 0; i < node.length; i++) {
-      const replaced = walkValues(node[i], fn, here);
-      if (replaced !== undefined) node[i] = replaced;
-    }
-    return;
+    return node.map((v) => walkAndReplace(v, fn));
   }
-  if (node && typeof node === 'object') {
-    for (const k of Object.keys(node)) {
-      const replaced = walkValues(node[k], fn, here);
-      if (replaced !== undefined) node[k] = replaced;
-    }
-    return;
+  if (node && typeof node === "object") {
+    const out = {};
+    for (const k of Object.keys(node)) out[k] = walkAndReplace(node[k], fn);
+    return out;
   }
-  if (typeof node === 'string') {
-    const out = fn(node, here);
-    if (out !== node) return out;
+  if (typeof node === "string") {
+    const replaced = fn(node);
+    if (replaced !== undefined) return replaced;
   }
+  return node;
 }
 
-// ---------------------------------------------------------------------------
-// Record construction
-// ---------------------------------------------------------------------------
+function buildStubFor(value, site, hostRec) {
+  if (typeof value !== "string" || !looksLikeRef(value)) return undefined;
+  const parsed = parseRef(value);
+  if (!parsed.ok) return undefined;
 
-async function buildRecord(ctx, { slug, shape, jsonPath, mdPath, localeJson, localeMd, here }) {
-  const rec = {
-    shape,
-    files: {},
-    data: {},
-    body: '',
-    bodyHtml: '',
-    slug,
-    here,
-    // MIP-0014: every record carries a `locales` array of locale tags
-    // that have at least one source file (base counts as defaultLocale),
-    // and a `localized` map of per-locale resolved views.
-    locales: [],
-    localized: {}
-  };
-  if (jsonPath) {
-    const txt = await fs.readFile(jsonPath, 'utf8');
-    try {
-      rec.data = JSON.parse(txt);
-    } catch (err) {
-      diag(ctx, 'structural', 'mosaic.config.invalid',
-        `JSON unparseable: ${err.message}`, path.relative(ctx.root, jsonPath));
-      rec.data = {};
-    }
-    rec.files.json = path.relative(ctx.root, jsonPath);
+  if (parsed.kind === "asset") {
+    let rel = parsed.path;
+    if (rel.startsWith("images/")) rel = rel.slice("images/".length);
+    const meta = (site.assetManifest && site.assetManifest[rel]) || {};
+    return { $asset: "images/" + rel, ...meta };
   }
-  if (mdPath) {
-    const txt = await fs.readFile(mdPath, 'utf8');
-    if (txt.startsWith('---')) {
-      diag(ctx, 'structural', 'mosaic.frontmatter.present',
-        `Markdown file has frontmatter; forbidden in 0.8`, path.relative(ctx.root, mdPath));
-    }
-    rec.body = txt;
-    rec.bodyHtml = renderMarkdown(txt);
-    rec.files.md = path.relative(ctx.root, mdPath);
+  if (parsed.kind === "relative") {
+    let pathStr = parsed.path;
+    if (hostRec && hostRec.dataDir) pathStr = `${hostRec.dataDir}/${parsed.path}`;
+    return { $rel: "./" + parsed.path, path: pathStr };
   }
-
-  // Per-locale overrides — read every <slug>.<locale>.{json,md} file we
-  // discovered into a parallel structure. Each locale resolves its own
-  // data via deep-merge over the base + a translatable-field unwrap.
-  const localeJsonRaw = {};  // locale -> parsed JSON
-  const localeBodies  = {};  // locale -> markdown text
-  for (const [loc, jp] of Object.entries(localeJson || {})) {
-    const txt = await fs.readFile(jp, 'utf8');
-    try {
-      localeJsonRaw[loc] = JSON.parse(txt);
-    } catch (err) {
-      diag(ctx, 'structural', 'mosaic.config.invalid',
-        `JSON unparseable: ${err.message}`, path.relative(ctx.root, jp));
-      localeJsonRaw[loc] = {};
-    }
-    rec.files.localeJson = rec.files.localeJson || {};
-    rec.files.localeJson[loc] = path.relative(ctx.root, jp);
-  }
-  for (const [loc, mp] of Object.entries(localeMd || {})) {
-    const txt = await fs.readFile(mp, 'utf8');
-    if (txt.startsWith('---')) {
-      diag(ctx, 'structural', 'mosaic.frontmatter.present',
-        `Markdown file has frontmatter; forbidden in 0.8`, path.relative(ctx.root, mp));
-    }
-    localeBodies[loc] = txt;
-    rec.files.localeMd = rec.files.localeMd || {};
-    rec.files.localeMd[loc] = path.relative(ctx.root, mp);
-  }
-
-  // Compute `locales` covered. Base record counts for defaultLocale when
-  // any base file exists.
-  const locales = new Set();
-  if (jsonPath || mdPath) locales.add(ctx.defaultLocale);
-  for (const l of Object.keys(localeJsonRaw)) locales.add(l);
-  for (const l of Object.keys(localeBodies)) locales.add(l);
-  // Sort so defaultLocale is first.
-  rec.locales = [
-    ...(locales.has(ctx.defaultLocale) ? [ctx.defaultLocale] : []),
-    ...[...locales].filter((l) => l !== ctx.defaultLocale).sort(),
-  ];
-
-  // Resolve a per-locale view of the record. For each locale L:
-  //   1. base data
-  //   2. deep-merge `<slug>.<L>.json` on top
-  //   3. resolve any `{ $type: "translatable", values: {} }` to values[L]
-  //      with fallback to defaultLocale and a mosaic.locale.missing warning
-  //   4. body = <slug>.<L>.md if exists, else base body
-  for (const L of rec.locales) {
-    const baseClone = deepClone(rec.data || {});
-    const merged = deepMerge(baseClone, localeJsonRaw[L] || {});
-    const resolved = resolveTranslatable(merged, L, ctx.defaultLocale,
-      (key) => diag(ctx, 'warning', 'mosaic.locale.missing',
-        `Translatable field "${key}" has no value for locale "${L}"`, `${rec.slug}`));
-    const body = localeBodies[L] !== undefined ? localeBodies[L] : rec.body;
-    rec.localized[L] = {
-      data: resolved,
-      body: body || '',
-      bodyHtml: body ? renderMarkdown(body) : '',
-      title: resolveTitleFromMerged(resolved, body, rec.slug),
+  // ref:
+  if (parsed.singleton) {
+    const s = site.singletonsByName.get(parsed.singleton);
+    const stub = {
+      $ref: parsed.address,
+      url: null,
+      title: s ? (s.title || s.slug) : parsed.singleton,
     };
+    if (parsed.selector) stub.selector = parsed.selector;
+    return stub;
   }
-
-  // The "canonical" view of the record (default-locale resolved) is
-  // surfaced as the record's own data/body/bodyHtml/title so consumers
-  // that don't think about locales keep working.
-  const defView = rec.localized[ctx.defaultLocale];
-  if (defView) {
-    rec.data = defView.data;
-    rec.body = defView.body;
-    rec.bodyHtml = defView.bodyHtml;
-    rec.title = defView.title;
-  } else {
-    rec.title = resolveTitle(rec);
-  }
-  return rec;
+  const coll = site.collectionsByName.get(parsed.collection);
+  const rec = coll ? coll.recordsBySlug.get(parsed.slug.toLowerCase()) : null;
+  return {
+    $ref: parsed.address,
+    url: rec ? (site.recordUrls.get(rec) || rec.url || null) : null,
+    title: rec ? (rec.title || rec.slug) : parsed.slug,
+    ...(parsed.selector ? { selector: parsed.selector } : {}),
+  };
 }
 
-// ---------------------------------------------------------------------------
-// MIP-0014 helpers
-// ---------------------------------------------------------------------------
-
-// Split a filename stem like `holodomor-commemoration.uk` into
-// { slug: "holodomor-commemoration", locale: "uk" }. If the trailing
-// `.<segment>` isn't a known locale (from site.locales), treat the
-// stem as a non-localized slug.
-function parseLocaleStem(stem, locales) {
-  const idx = stem.lastIndexOf('.');
-  if (idx <= 0) return { slug: stem, locale: null };
-  const candidate = stem.slice(idx + 1);
-  if (locales && locales.includes(candidate)) {
-    return { slug: stem.slice(0, idx), locale: candidate };
-  }
-  // Also accept the bare two-letter form for back-compat with sites
-  // whose mosaic.json was written with BCP-47 longhand (en-CA) but whose
-  // files use bare codes (en). Match by primary subtag.
-  if (locales && locales.length) {
-    for (const l of locales) {
-      const primary = String(l).split('-')[0];
-      if (primary === candidate) return { slug: stem.slice(0, idx), locale: l };
+function attachLocalizedViews(site) {
+  for (const rec of site.allRecords) {
+    // Pre-render markdown bodies as HTML for the astro adapter.
+    rec.bodyHtml = rec.body ? renderMarkdown(rec.body) : "";
+    if (rec.localized) {
+      for (const [, view] of Object.entries(rec.localized)) {
+        view.bodyHtml = view.body ? renderMarkdown(view.body) : "";
+      }
     }
   }
-  return { slug: stem, locale: null };
-}
-
-function deepClone(v) {
-  if (v === null || typeof v !== 'object') return v;
-  if (Array.isArray(v)) return v.map(deepClone);
-  const out = {};
-  for (const k of Object.keys(v)) out[k] = deepClone(v[k]);
-  return out;
-}
-
-function deepMerge(base, overlay) {
-  if (overlay === null || overlay === undefined) return base;
-  if (typeof overlay !== 'object' || Array.isArray(overlay)) return overlay;
-  if (base === null || typeof base !== 'object' || Array.isArray(base)) {
-    return deepClone(overlay);
-  }
-  const out = { ...base };
-  for (const [k, v] of Object.entries(overlay)) {
-    if (v !== null && typeof v === 'object' && !Array.isArray(v) &&
-        out[k] !== null && typeof out[k] === 'object' && !Array.isArray(out[k])) {
-      out[k] = deepMerge(out[k], v);
-    } else {
-      out[k] = deepClone(v);
-    }
-  }
-  return out;
-}
-
-// Walk a value tree and replace any { $type: "translatable", values: {} }
-// node with the active locale's value (or fall back to default).
-function resolveTranslatable(node, locale, defaultLocale, onMissing, pathKey = '') {
-  if (node === null || typeof node !== 'object') return node;
-  if (Array.isArray(node)) {
-    return node.map((v, i) => resolveTranslatable(v, locale, defaultLocale, onMissing, `${pathKey}[${i}]`));
-  }
-  if (node.$type === 'translatable' && node.values && typeof node.values === 'object') {
-    if (Object.prototype.hasOwnProperty.call(node.values, locale)) {
-      return resolveTranslatable(node.values[locale], locale, defaultLocale, onMissing, pathKey);
-    }
-    // Fall back to defaultLocale (record a warning).
-    if (Object.prototype.hasOwnProperty.call(node.values, defaultLocale)) {
-      if (onMissing) onMissing(pathKey);
-      return resolveTranslatable(node.values[defaultLocale], locale, defaultLocale, onMissing, pathKey);
-    }
-    // Last resort: first present value, with warning.
-    const keys = Object.keys(node.values);
-    if (keys.length) {
-      if (onMissing) onMissing(pathKey);
-      return resolveTranslatable(node.values[keys[0]], locale, defaultLocale, onMissing, pathKey);
-    }
-    if (onMissing) onMissing(pathKey);
-    return null;
-  }
-  const out = {};
-  for (const [k, v] of Object.entries(node)) {
-    out[k] = resolveTranslatable(v, locale, defaultLocale, onMissing, pathKey ? `${pathKey}.${k}` : k);
-  }
-  return out;
-}
-
-function resolveTitleFromMerged(data, body, slug) {
-  if (data && typeof data.title === 'string' && data.title) return data.title;
-  const h1 = firstH1(body || '');
-  if (h1) return h1;
-  return titleCaseSlug(slug || '');
-}
-
-function resolveTitle(rec) {
-  if (rec?.data?.title && typeof rec.data.title === 'string') return rec.data.title;
-  const h1 = firstH1(rec?.body || '');
-  if (h1) return h1;
-  return titleCaseSlug(rec?.slug || '');
-}
-
-function firstH1(md) {
-  const lines = md.split(/\r?\n/);
-  for (const line of lines) {
-    if (line.trim() === '') continue;
-    const m = /^#\s+(.+)$/.exec(line);
-    return m ? m[1].trim() : null;
-  }
-  return null;
-}
-
-function titleCaseSlug(slug) {
-  return slug.replace(/-+/g, ' ').replace(/\b([a-z0-9])/g, (s) => s.toUpperCase());
 }
 
 function renderMarkdown(md) {
@@ -876,82 +128,69 @@ function renderMarkdown(md) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function validSlug(s) {
-  return /^[a-z0-9][a-z0-9-]*$/.test(s);
-}
-
-async function exists(p) {
-  try { await fs.access(p); return true; } catch { return false; }
-}
-
-async function* walk(dir) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  for (const ent of entries) {
-    const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      if (ent.name.startsWith('.') || ent.name.startsWith('_')) continue;
-      yield* walk(full);
-    } else if (ent.isFile()) {
-      yield full;
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Finalize — strip internal helpers, freeze
-// ---------------------------------------------------------------------------
-
-function finalize(ctx) {
-  // remove internal "here" pointers from emitted records (kept on the
-  // adapter-side objects but should not leak into shared snapshots)
-  const stripHere = (rec) => {
+// Strip internal pointers + reshape to the public adapter contract.
+function finalize(site) {
+  const stripInternal = (rec) => {
     if (!rec) return rec;
-    const out = { ...rec };
-    delete out.here;
-    return out;
+    const { here, _url, _pathSegments, localeFiles, ...rest } = rec;
+    return rest;
   };
+
   const pages = {};
-  for (const [k, v] of Object.entries(ctx.pages)) pages[k] = stripHere(v);
+  for (const p of site.pages) pages[p.url] = stripInternal(p);
 
   const collections = {};
-  for (const [k, v] of Object.entries(ctx.collections)) {
-    collections[k] = {
-      type: v.type,
-      records: Object.fromEntries(
-        Object.entries(v.records).map(([s, r]) => [s, stripHere(r)])
-      )
-    };
+  for (const [name, coll] of site.collectionsByName.entries()) {
+    const records = {};
+    for (const r of coll.records) records[r.slug] = stripInternal(r);
+    collections[name] = { type: coll.type, records };
   }
-  const singletons = {};
-  for (const [k, v] of Object.entries(ctx.singletons)) singletons[k] = stripHere(v);
 
-  // MIP-0014: surface resolved defaultLocale + locales on site even if the
-  // manifest only had the legacy `locale` field. Consumers should read
-  // `idx.site.defaultLocale` (always set).
-  const site = {
-    ...ctx.site,
-    defaultLocale: ctx.defaultLocale,
-    locales: ctx.locales,
+  const singletons = {};
+  for (const [name, s] of site.singletonsByName.entries()) singletons[name] = stripInternal(s);
+
+  // Assets: object-keyed, with manifest metadata flattened on.
+  const assets = {};
+  for (const rel of site.assetsOnDisk) {
+    const meta = (site.assetManifest && site.assetManifest[rel]) || {};
+    assets[rel] = { ...meta };
+  }
+  // Include manifest-declared entries that aren't on disk (loader.js may use them).
+  if (site.assetManifest) {
+    for (const [rel, meta] of Object.entries(site.assetManifest)) {
+      if (!(rel in assets)) assets[rel] = { ...meta };
+    }
+  }
+
+  let tokens = null;
+  const tokSingleton = site.singletonsByName.get("tokens");
+  if (tokSingleton && tokSingleton.data) tokens = tokSingleton.data;
+  else if (site.manifest && site.manifest.tokens) tokens = site.manifest.tokens;
+
+  const siteObj = {
+    ...(site.site || {}),
+    defaultLocale: site.defaultLocale,
+    locales: site.locales,
   };
 
+  // routes keyed by URL (the loader uses object iteration here).
+  const routes = {};
+  for (const r of site.routes) routes[r.url] = { kind: r.kind, target: r.target };
+
   return {
-    mosaic_version: ctx.manifest?.version || '0.8',
-    site,
-    manifest: ctx.manifest,
+    mosaic_version: (site.manifest && site.manifest.version) || "0.8",
+    site: siteObj,
+    manifest: site.manifest,
     pages,
     collections,
     singletons,
-    assets: ctx.assets,
-    tokens: ctx.tokens,
-    routes: ctx.routes,
-    redirects: ctx.redirects,
-    diagnostics: ctx.diagnostics
+    assets,
+    tokens,
+    routes,
+    redirects: site.redirects,
+    diagnostics: site.diagnostics.sorted(),
   };
 }

@@ -1,10 +1,8 @@
-"use strict";
-
 // Emit a redirect HTML file: meta-refresh + JS fallback + a Location comment.
 
-const { escapeHtml, escapeAttr } = require("./html");
+import { escapeHtml, escapeAttr } from "./html.js";
 
-function renderRedirect({ to, status, locale }) {
+export function renderRedirect({ to, status, locale }) {
   const safeTo = String(to || "/");
   const safeStatus = Number(status) || 301;
   const lang = locale || "en";
@@ -27,4 +25,3 @@ function renderRedirect({ to, status, locale }) {
 `;
 }
 
-module.exports = { renderRedirect };

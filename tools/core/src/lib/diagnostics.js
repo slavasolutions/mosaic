@@ -1,18 +1,13 @@
-"use strict";
-
 // Diagnostic accumulator. Stable codes per SPEC §6.
+// Identical contract used by validator, renderer, and astro-loader.
 
-const SEV_STRUCTURAL = "structural";
-const SEV_DRIFT = "drift";
-const SEV_WARNING = "warning";
+export const SEV_STRUCTURAL = "structural";
+export const SEV_DRIFT = "drift";
+export const SEV_WARNING = "warning";
 
-const SEVERITY_ORDER = {
-  structural: 0,
-  drift: 1,
-  warning: 2,
-};
+const SEVERITY_ORDER = { structural: 0, drift: 1, warning: 2 };
 
-class Diagnostics {
+export class Diagnostics {
   constructor() {
     this._items = [];
   }
@@ -32,29 +27,20 @@ class Diagnostics {
     this._items.push(d);
   }
 
-  structural(code, source, message, extra) {
-    this.add(SEV_STRUCTURAL, code, source, message, extra);
-  }
-  drift(code, source, message, extra) {
-    this.add(SEV_DRIFT, code, source, message, extra);
-  }
-  warning(code, source, message, extra) {
-    this.add(SEV_WARNING, code, source, message, extra);
-  }
+  structural(code, source, message, extra) { this.add(SEV_STRUCTURAL, code, source, message, extra); }
+  drift(code, source, message, extra) { this.add(SEV_DRIFT, code, source, message, extra); }
+  warning(code, source, message, extra) { this.add(SEV_WARNING, code, source, message, extra); }
 
-  has(code) {
-    return this._items.some((d) => d.code === code);
-  }
+  has(code) { return this._items.some((d) => d.code === code); }
+  hasStructural() { return this._items.some((d) => d.severity === SEV_STRUCTURAL); }
+  items() { return this._items.slice(); }
 
   summary() {
     const s = { structural: 0, drift: 0, warning: 0 };
-    for (const d of this._items) {
-      if (d.severity in s) s[d.severity]++;
-    }
+    for (const d of this._items) if (d.severity in s) s[d.severity]++;
     return s;
   }
 
-  // Stable order: severity, then code, then source.
   sorted() {
     return this._items.slice().sort((a, b) => {
       const sa = SEVERITY_ORDER[a.severity] ?? 9;
@@ -67,10 +53,3 @@ class Diagnostics {
     });
   }
 }
-
-module.exports = {
-  Diagnostics,
-  SEV_STRUCTURAL,
-  SEV_DRIFT,
-  SEV_WARNING,
-};

@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-"use strict";
-
 // Mosaic 0.8 reference renderer.
 //
 // Usage:
@@ -9,14 +7,14 @@
 // Reads a Mosaic site folder, builds an in-memory index, and writes a basic
 // HTML site to the output directory. Wireframe-quality. Correctness over polish.
 
-const fs = require("node:fs");
-const path = require("node:path");
+import fs from "node:fs";
+import path from "node:path";
 
-const { Diagnostics } = require("./lib/diagnostics");
-const { buildIndex } = require("./lib/build-index");
-const { renderPage } = require("./lib/render-page");
-const { renderRedirect } = require("./lib/render-redirect");
-const { renderTokensCss, renderDefaultStylesCss } = require("./lib/render-tokens");
+import { Diagnostics } from "./lib/diagnostics.js";
+import { buildIndex } from "./lib/build-index.js";
+import { renderPage } from "./lib/render-page.js";
+import { renderRedirect } from "./lib/render-redirect.js";
+import { renderTokensCss, renderDefaultStylesCss } from "./lib/render-tokens.js";
 
 function parseArgs(argv) {
   const args = { site: null, out: null, base: "" };
