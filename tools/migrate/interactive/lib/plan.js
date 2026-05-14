@@ -214,9 +214,25 @@ function buildPlan(scan, opts = {}) {
   };
 
   // ---------- Phase 2: site identity ----------
+  // MIP-0014: declare defaultLocale + locales so consumers can iterate
+  // across all locales the site ships. We preserve the legacy `locale`
+  // field too for round-trip safety (MIP-0009); engines should prefer
+  // defaultLocale.
+  const allLocales = (plan.locales || []).slice();
+  if (plan.baseLocale && !allLocales.includes(plan.baseLocale)) {
+    allLocales.unshift(plan.baseLocale);
+  }
+  const localeTags = allLocales.map((l) => mapToBcp47(l));
+  // Keep raw two-letter tags too — many real Astro/inlang setups use them.
+  // We emit the BCP-47 form (en-CA, uk-UA) as the canonical site.locales
+  // entries to match site.locale + Astro's i18n.locales norms. The migrator
+  // also accepts the bare two-letter form on disk and on translatable-field
+  // keys for back-compat.
   plan.site = {
     name: (scan.packageJson && scan.packageJson.name) || "Migrated Site",
     locale: plan.baseLocale ? mapToBcp47(plan.baseLocale) : "en",
+    defaultLocale: plan.baseLocale ? mapToBcp47(plan.baseLocale) : "en",
+    locales: localeTags.length ? localeTags : undefined,
     url: scan.siteUrl || "",
   };
 
@@ -240,8 +256,14 @@ function buildPlan(scan, opts = {}) {
         plan.skipped.push({ source: baseSlug, reason: "slug empty after normalization" });
         continue;
       }
-      const entry = buildCollectionRecordEntry(col.name, slug, group, plan.baseLocale);
-      if (entry) plan.collectionEntries.push(entry);
+      // MIP-0014: each baseSlug produces 1..N entries — the canonical
+      // record plus one per-locale sibling for every non-default locale
+      // that had source content. Older callers expected a single entry;
+      // we use buildCollectionRecordEntries for the new path.
+      const subEntries = buildCollectionRecordEntries(col.name, slug, group, plan.baseLocale);
+      if (subEntries) {
+        for (const e of subEntries) plan.collectionEntries.push(e);
+      }
     }
   }
 
@@ -401,65 +423,173 @@ function groupRecordsByBaseSlug(records) {
 }
 
 // One slug can have many variants (foo.en.md + foo.uk.md, or foo.json alone).
-// We collapse them into one Mosaic record: pick the base locale's data; carry
-// other locales under $astro.translations.<locale>.
-function buildCollectionRecordEntry(collectionName, slug, group, baseLocale) {
-  // Variant priorities:
-  //   1) JSON-only record (.json with no locale) -> data record.
-  //   2) Markdown record(s) keyed by locale: pick base, carry others under $astro.
-  //   3) Folder record: use index.json + index.md.
-  const jsonOnly = group.find((g) => g.shape === "direct" && g.ext === ".json");
-  const mdBase = group.find((g) => g.shape === "direct" && (g.ext === ".md" || g.ext === ".mdx") && g.locale === baseLocale);
-  const mdAny = group.find((g) => g.shape === "direct" && (g.ext === ".md" || g.ext === ".mdx"));
+// MIP-0014: emit them as separate sibling files (`<slug>.<locale>.md`,
+// optionally `<slug>.<locale>.json`) instead of collapsing under
+// $astro.translations. The base-locale record is the canonical entry the
+// type is inferred from; other locales ride along as locale-suffix records.
+//
+// Returns an array of entries. The first entry is the base-locale record
+// (targetRel `collections/<c>/<slug>`); subsequent entries are locale
+// variants (targetRel `collections/<c>/<slug>.<locale>`). The shared JSON
+// sidecar (if any) lives on the base entry; per-locale JSON overrides land
+// on the locale entry only when a per-locale frontmatter field differs from
+// the base.
+function buildCollectionRecordEntries(collectionName, slug, group, baseLocale) {
+  const entries = [];
+  const jsonOnly = group.find((g) => g.shape === "direct" && g.ext === ".json" && !g.locale);
   const folder = group.find((g) => g.shape === "folder");
+  const mdRecords = group.filter((g) => g.shape === "direct" && (g.ext === ".md" || g.ext === ".mdx"));
 
-  const entry = {
-    targetRel: `collections/${collectionName}/${slug}`,
-    mode: "create",
-    sources: group.map((g) => g.path),
-    json: null,
-    body: null,
-  };
-
-  if (jsonOnly) {
+  // Case 1: JSON-only data record (no markdown body, no locale variants).
+  if (jsonOnly && mdRecords.length === 0 && !folder) {
     const data = safeReadJSON(jsonOnly.path) || {};
-    const json = normalizeRecordJson(data, baseLocale);
-    entry.json = json;
-  } else if (mdBase || mdAny) {
-    const picked = mdBase || mdAny;
-    const parsed = readMarkdownSafe(picked.path) || { frontmatter: {}, body: "" };
-    const split = splitFrontmatterToSidecar(parsed.frontmatter, parsed.body);
-    entry.json = split.json;
-    entry.body = split.body;
-    // Carry alternate locales under $astro.translations.
-    const others = group.filter((g) => g !== picked && (g.ext === ".md" || g.ext === ".mdx"));
-    if (others.length) {
-      const translations = {};
-      for (const o of others) {
-        const op = readMarkdownSafe(o.path) || { frontmatter: {}, body: "" };
-        translations[o.locale || "unknown"] = {
-          frontmatter: op.frontmatter || {},
-          body: op.body || "",
-        };
-      }
-      entry.json["$astro"] = entry.json["$astro"] || {};
-      entry.json["$astro"].translations = translations;
+    const { base, perLocale } = normalizeRecordJson(data, baseLocale);
+    const baseEntry = {
+      targetRel: `collections/${collectionName}/${slug}`,
+      mode: "create",
+      sources: [jsonOnly.path],
+      json: base,
+      body: null,
+      locale: null,
+    };
+    ensureTitleField(baseEntry, slug);
+    entries.push(baseEntry);
+    // Emit one per-locale JSON sidecar per non-default locale that has
+    // distinct values in the normalized localized maps.
+    for (const [loc, fields] of Object.entries(perLocale || {})) {
+      if (!fields || Object.keys(fields).length === 0) continue;
+      entries.push({
+        targetRel: `collections/${collectionName}/${slug}.${loc}`,
+        mode: "create",
+        sources: [jsonOnly.path],
+        json: fields,
+        body: null,
+        locale: loc,
+      });
     }
-  } else if (folder) {
+    return entries;
+  }
+
+  // Case 2: Folder-shape record (index.json / index.md inside a slug dir).
+  if (folder) {
     const ij = path.join(folder.path, "index.json");
     const im = path.join(folder.path, "index.md");
     const data = fs.existsSync(ij) ? safeReadJSON(ij) || {} : {};
-    entry.json = normalizeRecordJson(data, baseLocale);
+    const { base, perLocale } = normalizeRecordJson(data, baseLocale);
+    const baseEntry = {
+      targetRel: `collections/${collectionName}/${slug}`,
+      mode: "create",
+      sources: [folder.path],
+      json: base,
+      body: null,
+      locale: null,
+      folder: true,
+    };
     if (fs.existsSync(im)) {
-      try { entry.body = stripFrontmatter(fs.readFileSync(im, "utf8")); } catch {}
+      try { baseEntry.body = stripFrontmatter(fs.readFileSync(im, "utf8")); } catch {}
     }
-  } else {
-    return null;
+    ensureTitleField(baseEntry, slug);
+    entries.push(baseEntry);
+    for (const [loc, fields] of Object.entries(perLocale || {})) {
+      if (!fields || Object.keys(fields).length === 0) continue;
+      entries.push({
+        targetRel: `collections/${collectionName}/${slug}.${loc}`,
+        mode: "create",
+        sources: [folder.path],
+        json: fields,
+        body: null,
+        locale: loc,
+        folder: true,
+      });
+    }
+    return entries;
   }
 
-  // Ensure a resolvable title. Title precedence per SPEC §2.3.
-  ensureTitleField(entry, slug);
-  return entry;
+  // Case 3: Markdown record(s) keyed by locale.
+  if (mdRecords.length > 0) {
+    // Pick the base-locale markdown (or the unlocalized one) as the base
+    // record. If neither exists, the first markdown found is the base —
+    // we still split locales across siblings.
+    const mdBase = mdRecords.find((g) => g.locale === baseLocale) ||
+                   mdRecords.find((g) => g.locale === null) ||
+                   mdRecords[0];
+    const baseParsed = readMarkdownSafe(mdBase.path) || { frontmatter: {}, body: "" };
+    const baseSplit = splitFrontmatterToSidecar(baseParsed.frontmatter, baseParsed.body);
+    const baseEntry = {
+      targetRel: `collections/${collectionName}/${slug}`,
+      mode: "create",
+      sources: [mdBase.path],
+      json: baseSplit.json,
+      body: baseSplit.body,
+      locale: null,
+    };
+    ensureTitleField(baseEntry, slug);
+    entries.push(baseEntry);
+
+    // For every other markdown, emit a `<slug>.<locale>.md` sibling.
+    // Frontmatter fields that match the base are dropped from the locale
+    // JSON sidecar; fields that differ become the per-locale override.
+    for (const o of mdRecords) {
+      if (o === mdBase) continue;
+      if (!o.locale) continue; // skip orphan unlocalized siblings
+      const op = readMarkdownSafe(o.path) || { frontmatter: {}, body: "" };
+      const osplit = splitFrontmatterToSidecar(op.frontmatter, op.body);
+      const overrides = diffFields(osplit.json, baseSplit.json);
+      const locEntry = {
+        targetRel: `collections/${collectionName}/${slug}.${o.locale}`,
+        mode: "create",
+        sources: [o.path],
+        json: Object.keys(overrides).length ? overrides : null,
+        body: osplit.body,
+        locale: o.locale,
+      };
+      entries.push(locEntry);
+    }
+    return entries;
+  }
+
+  return null;
+}
+
+// Compute the per-locale override JSON: keep keys whose value differs from
+// the base record. Engine-namespaced ($astro.*) keys always survive on the
+// locale record so MIP-0009 round-trip holds.
+function diffFields(localeJson, baseJson) {
+  const out = {};
+  for (const [k, v] of Object.entries(localeJson || {})) {
+    if (k.startsWith("$")) {
+      // Always carry engine extras on the locale entry — they were
+      // observed on this locale's source file.
+      out[k] = v;
+      continue;
+    }
+    const bv = baseJson ? baseJson[k] : undefined;
+    if (!deepEqual(bv, v)) out[k] = v;
+  }
+  return out;
+}
+
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!deepEqual(a[i], b[i])) return false;
+    return true;
+  }
+  const ak = Object.keys(a); const bk = Object.keys(b);
+  if (ak.length !== bk.length) return false;
+  for (const k of ak) if (!deepEqual(a[k], b[k])) return false;
+  return true;
+}
+
+// Legacy single-entry shim. Some downstream callers (tests, debugging
+// scripts) still expect the singular form. Keep it as a thin wrapper.
+function buildCollectionRecordEntry(collectionName, slug, group, baseLocale) {
+  const all = buildCollectionRecordEntries(collectionName, slug, group, baseLocale);
+  return all && all.length ? all[0] : null;
 }
 
 function stripFrontmatter(raw) {
@@ -496,30 +626,55 @@ function ensureTitleField(entry, slug) {
   entry.json.title = titleCase(slug);
 }
 
-// Normalize a JSON record for Mosaic:
-//   - localized fields (object keyed by locale) -> keep base-locale value, stash whole object under $astro.
-//   - drop `slug` field (it's the filename).
-//   - move unknown engine-specific stuff under $astro.
+// Normalize a JSON record for Mosaic.
+//
+// MIP-0014: localized fields (`{ en: "X", uk: "Y" }`) split into a
+// base-locale value on the canonical record + a per-locale override
+// object on each non-default-locale sibling.
+//
+// Returns `{ base, perLocale }`:
+//   - base      → JSON to write at `<slug>.json` (the canonical record).
+//   - perLocale → `{ "<locale>": { <overridden fields> }, ... }` for each
+//                 non-default locale that had any divergent value. The
+//                 caller emits these as `<slug>.<locale>.json` sidecars.
+//
+// Notes:
+//   - `slug` and `lang`/`locale` engine bookkeeping still survives under
+//     `$astro` so MIP-0009 round-trip holds.
+//   - The localized field is also stamped on $astro.localized to preserve
+//     the original shape for engines that still want it (clear-ucc was
+//     reading from there). New consumers should prefer the
+//     locale-suffix sibling records.
 function normalizeRecordJson(raw, baseLocale) {
-  const out = {};
+  const base = {};
   const astro = {};
   const localized = {};
+  const perLocale = {};
   for (const [k, v] of Object.entries(raw || {})) {
     if (k === "slug") { astro.slug = v; continue; }
     if (k === "lang" || k === "locale") { astro[k] = v; continue; }
     if (v && typeof v === "object" && !Array.isArray(v) && isLocaleMap(v)) {
-      const base = v[baseLocale];
-      out[k] = base !== undefined ? base : (v.en !== undefined ? v.en : Object.values(v)[0]);
+      // Split locale map: keep base-locale value on the canonical record,
+      // emit other locales' values onto per-locale sidecars.
+      const baseVal = v[baseLocale] !== undefined ? v[baseLocale] : (v.en !== undefined ? v.en : Object.values(v)[0]);
+      base[k] = baseVal;
       localized[k] = v;
+      for (const [loc, val] of Object.entries(v)) {
+        if (loc === baseLocale) continue;
+        if (val === undefined || val === null) continue;
+        if (deepEqual(val, baseVal)) continue;
+        perLocale[loc] = perLocale[loc] || {};
+        perLocale[loc][k] = val;
+      }
       continue;
     }
-    out[k] = v;
+    base[k] = v;
   }
   if (Object.keys(localized).length) {
     astro.localized = localized;
   }
-  if (Object.keys(astro).length) out["$astro"] = astro;
-  return out;
+  if (Object.keys(astro).length) base["$astro"] = astro;
+  return { base, perLocale };
 }
 
 function isLocaleMap(obj) {
@@ -640,4 +795,4 @@ function deriveNavFromMessages(scan, plan) {
   return items;
 }
 
-module.exports = { buildPlan, inferTypeFields, inferTypeName, lowerSlug, titleCase };
+module.exports = { buildPlan, buildCollectionRecordEntries, inferTypeFields, inferTypeName, lowerSlug, titleCase };

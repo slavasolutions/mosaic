@@ -171,6 +171,8 @@ Slugs MUST match `^[a-z0-9][a-z0-9-]*$`. This applies uniformly to:
 
 Filename matching is case-sensitive on disk. The case-insensitivity rule applies only to **detecting collisions**: two records whose slugs differ only in case (e.g. `Anna.json` + `anna.json`) are a structural conflict (`mosaic.slug.case`). Refs themselves use the lowercase form.
 
+**Locale suffix (since 0.8.1, MIP-0014).** A filename of the form `<slug>.<locale>.{md,json}` where `<locale>` matches an entry in `mosaic.json#site.locales` (§8.2) is a per-locale variant of `<slug>.{md,json}`. The filename is parsed by stripping the extension first, then checking the trailing `.<segment>` against `site.locales`. If `<segment>` is not a known locale, the entire stem is treated as the slug and is subject to the slug grammar above. A locale suffix on a file whose tag is not in `site.locales` fires `mosaic.locale.invalid` (drift).
+
 ### 2.6 Reserved names within records
 
 Engines MUST ignore the following anywhere inside `pages/` and `collections/`:
@@ -189,6 +191,24 @@ When a record has both a markdown body and a `sections` array in its JSON:
 2. Engines MUST NOT render the body as a separate block alongside sections.
 3. To include the body inside the section flow explicitly, add a `{ "type": "prose", "from": "./<filename>.md" }` section.
 4. If `sections` is absent or empty, the body is rendered directly.
+
+### 2.8 Localized records (since 0.8.1)
+
+Mosaic supports two orthogonal localization mechanisms, both first-class. See MIP-0014 for the full rationale.
+
+**Translatable fields.** Any field value of the shape `{ "$type": "translatable", "values": { "<locale>": <value>, ... } }` is a per-locale map. Engines resolve to `values[activeLocale]`, fall back to `values[site.defaultLocale]`, then to any present value; missing values emit `mosaic.locale.missing` (warning).
+
+**Locale-suffix records.** Sibling files `<slug>.<locale>.{md,json}` provide the per-locale variant of `<slug>.{md,json}`. Shared JSON applies across locales; per-locale JSON merges on top at field granularity; markdown body uses the per-locale `.md` when present, else the base. Filename grammar is amended in §2.5.
+
+**Resolution algorithm for `<slug>` at active locale `L`:**
+
+1. Base JSON = parsed `<slug>.json` if exists, else `{}`.
+2. If `<slug>.<L>.json` exists, deep-merge it on top of base JSON (objects merge recursively; arrays replace).
+3. Body = `<slug>.<L>.md` if exists, else `<slug>.md`, else none.
+4. For any field still in `{ "$type": "translatable", "values": {...} }` shape, replace with `values[L]` (or `values[defaultLocale]` with `mosaic.locale.missing`).
+5. Title precedence (§2.3) and required-title (MIP-0010) run against the resolved record.
+
+A non-localized site (`site.locales` absent or single-locale) uses the algorithm with `L = defaultLocale`. Translatable fields with a single locale value resolve trivially.
 
 ---
 
@@ -524,6 +544,8 @@ Every diagnostic MUST be one of:
 - `mosaic.field.type-mismatch` — field value doesn't match declared type
 - `mosaic.ref.unresolved` — `ref:` or `asset:` target doesn't exist
 - `mosaic.selector.unresolved` — `@selector` doesn't resolve in the target
+- `mosaic.locale.invalid` — locale-suffix file or translatable-field key uses a tag not in `site.locales` (since 0.8.1)
+- `mosaic.locale.unknown-default` — `mosaic.json#site.defaultLocale` is not in `site.locales` (since 0.8.1)
 
 ### 6.4 Warnings (selected)
 
@@ -532,6 +554,7 @@ Every diagnostic MUST be one of:
 - `mosaic.asset.unmanifested` — asset on disk but not in manifest
 - `mosaic.collection.unmounted` — collection has no mounting page and no inbound refs
 - `mosaic.redirect.duplicate-source` — both `mosaic.json#redirects` and `redirects` singleton exist
+- `mosaic.locale.missing` — translatable field has no value for the active locale (fell back to default, or no value at all) (since 0.8.1, MIP-0014)
 
 ### 6.5 Diagnostic format
 
@@ -665,12 +688,22 @@ All top-level fields are required to be present, but each MAY be empty (`{}` or 
 ```json
 "site": {
   "name": "string (required)",
-  "locale": "BCP 47 tag (optional)",
-  "url": "canonical URL (optional)"
+  "locale":        "BCP 47 tag (optional, legacy)",
+  "defaultLocale": "BCP 47 tag (optional)",
+  "locales":       ["<BCP 47 tag>", ...],
+  "url":           "canonical URL (optional)"
 }
 ```
 
 This is **identity metadata**, used by tooling, indexers, deployment. Content for site-wide display (contact info, tagline, social handles) belongs in a `site` singleton at the root, not here. The two MAY have different `name` values.
+
+**Localization fields (since 0.8.1, MIP-0014):**
+
+- `defaultLocale` (optional) — BCP 47 tag for the locale resolved when none is requested and the fallback target for missing translations. Defaults to `locale` if present, else `"en"`.
+- `locales` (optional) — all locales the site ships content for. If absent, the site is single-locale (`[defaultLocale]`). If present, `defaultLocale` MUST be a member; otherwise `mosaic.locale.unknown-default` (drift) fires.
+- `locale` is preserved verbatim for round-trip safety (MIP-0009). Engines SHOULD prefer `defaultLocale` when both are present.
+
+See §2.8 and MIP-0014 for resolution semantics.
 
 ### 8.3 `types`
 
@@ -821,7 +854,8 @@ Deliberately not in the base spec:
 - Layouts (responsive grid, breakpoints, area assignment)
 - Per-page / per-component / per-record design overrides
 - Authentication, authorization, access control
-- Localization beyond the locale field
+- Locale-prefixed URL routing (`/uk/about` etc.) — engines own routing; the spec only owns content shape
+- Per-locale asset variants (`hero.uk.jpg`) — author via a translatable field whose values are `asset:` refs
 - Drafts, revisions, workflow states
 - Hosting, deployment, CDN
 - Search indexes

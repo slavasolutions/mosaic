@@ -207,15 +207,24 @@ function buildRecord(siteRoot, parentDir, slug, files, diagnostics) {
 
 // Enumerate records inside a directory (pages/ or collections/<name>/).
 // Returns array of records.
+//
+// MIP-0014: a filename of the form `<slug>.<locale>.{md,json}` where
+// `<locale>` is one of `opts.locales` (drawn from `mosaic.json#site.locales`)
+// is a per-locale variant of `<slug>.{md,json}`. The canonical record under
+// `<slug>` is what gets validated; locale siblings are aggregated onto the
+// same directBySlug entry under `localeFiles`. If the trailing segment
+// after the last `.` is NOT a known locale the entire stem is the slug
+// (which then must pass the slug regex).
 function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
   const opts2 = opts || {};
   const allowIndex = opts2.allowIndex !== false; // pages and collections allow index records
+  const locales = Array.isArray(opts2.locales) ? opts2.locales : [];
   const dirAbs = path.join(siteRoot, dirRel);
   const entries = readDirSafe(dirAbs);
   if (!entries) return [];
 
   // Group by slug (case-insensitive for collision detection, case-sensitive for shape detection).
-  const directBySlug = new Map(); // slug → { mdAbs?, jsonAbs?, slugLiteral }
+  const directBySlug = new Map(); // slug → { mdAbs?, jsonAbs?, slugLiteral, localeFiles? }
   const folderBySlug = new Map(); // slug → { abs, slugLiteral }
   const slugCaseMap = new Map();  // lower-slug → first literal seen, for case-collision detection
 
@@ -226,21 +235,29 @@ function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
     if (ent.isFile()) {
       const m = /^(.+)\.(md|json)$/.exec(ent.name);
       if (!m) continue;
-      const slugLiteral = m[1];
+      const stem = m[1];
       const ext = m[2];
 
-      // Index files are only valid inside folder-shape; at top level treat 'index' as a slug.
-      // The minimal-site has pages/index.md → slug "index" (folder-shape-less index, valid for pages).
-      // For pages, "index" → "/" URL; for collections, "index" is just a slug.
-      // We accept; slug check below will pass since "index" matches the regex.
+      // MIP-0014: strip a `.<locale>` suffix if the segment after the last
+      // dot is in the declared site.locales (or its primary subtag).
+      const localeInfo = splitLocaleStem(stem, locales);
+      const slugLiteral = localeInfo.slug;
+      const locale = localeInfo.locale;
 
       const slugKey = slugLiteral;
       if (!directBySlug.has(slugKey)) {
         directBySlug.set(slugKey, { mdAbs: null, jsonAbs: null, slugLiteral });
       }
       const entry = directBySlug.get(slugKey);
-      if (ext === "md") entry.mdAbs = abs;
-      else entry.jsonAbs = abs;
+      if (locale === null) {
+        if (ext === "md") entry.mdAbs = abs;
+        else entry.jsonAbs = abs;
+      } else {
+        entry.localeFiles = entry.localeFiles || {};
+        const slot = entry.localeFiles[locale] = entry.localeFiles[locale] || {};
+        if (ext === "md") slot.mdAbs = abs;
+        else slot.jsonAbs = abs;
+      }
     } else if (ent.isDirectory()) {
       folderBySlug.set(ent.name, { abs, slugLiteral: ent.name });
     }
@@ -314,6 +331,24 @@ function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
   return records;
 }
 
+// Split a filename stem into { slug, locale } per MIP-0014. If the
+// trailing dotted segment isn't a declared site.locales entry (or its
+// primary subtag), treat the whole stem as the slug.
+function splitLocaleStem(stem, locales) {
+  if (!locales || locales.length === 0) return { slug: stem, locale: null };
+  const idx = stem.lastIndexOf(".");
+  if (idx <= 0) return { slug: stem, locale: null };
+  const candidate = stem.slice(idx + 1);
+  if (locales.includes(candidate)) {
+    return { slug: stem.slice(0, idx), locale: candidate };
+  }
+  for (const l of locales) {
+    const primary = String(l).split("-")[0];
+    if (primary === candidate) return { slug: stem.slice(0, idx), locale: l };
+  }
+  return { slug: stem, locale: null };
+}
+
 function validateSlug(slug, sourcePath, diagnostics, fileInfo) {
   if (SLUG_RE.test(slug)) return true;
   // Find a representative file to point at, as a path relative to the dir we're walking.
@@ -371,18 +406,20 @@ function pageRecordUrl(pageRec) {
 //
 // A directory under pages/ that has no index.{md,json} is NOT a record; it's a
 // URL-prefix-only container. Its contents are still walked.
-function enumeratePageTree(siteRoot, diagnostics) {
+function enumeratePageTree(siteRoot, diagnostics, opts) {
   const pagesDir = path.join(siteRoot, "pages");
   if (!fs.existsSync(pagesDir)) return [];
   const out = [];
-  walkPagesDir(siteRoot, "pages", [], out, diagnostics);
+  const locales = (opts && Array.isArray(opts.locales)) ? opts.locales : [];
+  walkPagesDir(siteRoot, "pages", [], out, diagnostics, locales);
   return out;
 }
 
-function walkPagesDir(siteRoot, dirRel, urlSegments, out, diagnostics) {
+function walkPagesDir(siteRoot, dirRel, urlSegments, out, diagnostics, locales) {
   const dirAbs = path.join(siteRoot, dirRel);
   const entries = readDirSafe(dirAbs);
   if (!entries) return;
+  locales = locales || [];
 
   const directBySlug = new Map();
   const subdirs = [];
@@ -394,12 +431,22 @@ function walkPagesDir(siteRoot, dirRel, urlSegments, out, diagnostics) {
     if (ent.isFile()) {
       const m = /^(.+)\.(md|json)$/.exec(ent.name);
       if (!m) continue;
-      const slug = m[1];
+      const stem = m[1];
       const ext = m[2];
+      // MIP-0014: collapse a `<slug>.<locale>` stem onto the base slug
+      // when the locale is recognized.
+      const { slug, locale } = splitLocaleStem(stem, locales);
       if (!directBySlug.has(slug)) directBySlug.set(slug, { mdAbs: null, jsonAbs: null });
       const e = directBySlug.get(slug);
-      if (ext === "md") e.mdAbs = abs;
-      else e.jsonAbs = abs;
+      if (locale === null) {
+        if (ext === "md") e.mdAbs = abs;
+        else e.jsonAbs = abs;
+      } else {
+        e.localeFiles = e.localeFiles || {};
+        const slot = e.localeFiles[locale] = e.localeFiles[locale] || {};
+        if (ext === "md") slot.mdAbs = abs;
+        else slot.jsonAbs = abs;
+      }
     } else if (ent.isDirectory()) {
       subdirs.push({ name: ent.name, abs });
     }
@@ -451,7 +498,7 @@ function walkPagesDir(siteRoot, dirRel, urlSegments, out, diagnostics) {
       rec._pathSegments = segments;
       out.push(rec);
     }
-    walkPagesDir(siteRoot, recRel, segments, out, diagnostics);
+    walkPagesDir(siteRoot, recRel, segments, out, diagnostics, locales);
   }
 
   for (const [slug, info] of directBySlug) {

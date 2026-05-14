@@ -1,0 +1,26 @@
+{
+  "name": "@mosaic/astro-loader",
+  "version": "0.8.0",
+  "description": "Generic Astro Content Collections loader for Mosaic 0.8 folders. Each Mosaic collection becomes an Astro collection; singletons are accessed via runtime helpers.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./runtime": "./src/runtime.js",
+    "./load-site": "./src/load-site.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "astro": "^4 || ^5 || ^6"
+  },
+  "dependencies": {
+    "marked": "^12"
+  },
+  "license": "MIT"
+}

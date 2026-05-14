@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.8.1 — 2026-05-14
+
+Promotes localization out of engine extensions into the base spec.
+
+### Shipped MIPs (new)
+
+- **MIP-0014** — First-class locales (translatable fields + locale-suffix records, `site.defaultLocale`, `site.locales`).
+
+### Spec additions
+
+- SPEC §2.5 — filename grammar amended to parse `<slug>.<locale>.{md,json}` suffix before the extension check.
+- SPEC §2.8 (new) — localized records resolution algorithm.
+- SPEC §6.3 — `mosaic.locale.invalid`, `mosaic.locale.unknown-default` drift codes.
+- SPEC §6.4 — `mosaic.locale.missing` warning code.
+- SPEC §8.2 — `site.defaultLocale` and `site.locales` fields.
+- SPEC §11 — replaced "Localization beyond the locale field" with the more specific "Locale-prefixed URL routing" and "Per-locale asset variants".
+
+### Tooling updates
+
+- Migrator (`tools/migrate/interactive/`) emits sibling locale-suffix records (`<slug>.<locale>.md`) instead of stashing translations under `$astro.translations.<locale>`. Detects source locales from `astro.config.mjs#i18n` or `project.inlang/settings.json` and writes `site.defaultLocale` + `site.locales` into `mosaic.json`.
+- Astro loader (`tools/astro-loader/`) emits one Astro entry per `(slug, locale)` combination. Default-locale entries keep `id = "<slug>"`; non-default-locale entries use `id = "<slug>--<locale>"`. Each entry carries `data.locale`. Translatable fields are resolved against the entry's locale before reaching the schema.
+
+### Conformance tests
+
+- `033-translatable-field-pass` — translatable field resolved against `defaultLocale`.
+- `034-locale-suffix-record-pass` — `<slug>.<locale>.md` sibling files surface as separate locale variants.
+
+---
+
 ## 0.8 — 2026-05-14 (draft)
 
 Closes the interop holes left in 0.7 and adds the three features 0.7 deferred. No more "globals/" folder; `mosaic.json` becomes a real manifest; design tokens, redirects, and a home-route lock are first-class.

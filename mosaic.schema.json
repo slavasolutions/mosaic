@@ -26,9 +26,15 @@
       "required": ["name"],
       "additionalProperties": true,
       "properties": {
-        "name":   { "type": "string", "minLength": 1 },
-        "locale": { "type": "string" },
-        "url":    { "type": "string", "format": "uri" }
+        "name":          { "type": "string", "minLength": 1 },
+        "locale":        { "type": "string" },
+        "defaultLocale": { "type": "string" },
+        "locales": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "url":           { "type": "string", "format": "uri" }
       }
     },
     "types": {

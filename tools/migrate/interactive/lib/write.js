@@ -44,6 +44,12 @@ function emitSite(plan, scan, outDir, opts = {}) {
     site: {
       name: plan.site.name,
       locale: plan.site.locale,
+      // MIP-0014: first-class locales. defaultLocale is always written when
+      // we know it; locales is only written if there's more than one.
+      defaultLocale: plan.site.defaultLocale || undefined,
+      locales: plan.site.locales && plan.site.locales.length > 1
+        ? plan.site.locales
+        : undefined,
       url: plan.site.url || undefined,
     },
     types: plan.types,
@@ -53,6 +59,8 @@ function emitSite(plan, scan, outDir, opts = {}) {
   };
   // Strip undefined site fields (JSON.stringify drops them but keep tidy).
   if (!manifest.site.url) delete manifest.site.url;
+  if (!manifest.site.defaultLocale) delete manifest.site.defaultLocale;
+  if (!manifest.site.locales) delete manifest.site.locales;
   writeJSON("mosaic.json", manifest);
 
   // 2) pages/

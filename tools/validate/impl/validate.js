@@ -158,6 +158,15 @@ function writeHuman(output) {
 // ---------- Build the in-memory site index ----------
 
 function buildSiteIndex(sitePath, manifest, diagnostics) {
+  // MIP-0014: derive the locale set the walker uses to recognize
+  // `<slug>.<locale>.{md,json}` siblings. Falls back to a single-locale
+  // site (empty list = the legacy walker) when site.locales is absent.
+  const site = (manifest && manifest.site) || {};
+  const declaredLocales = Array.isArray(site.locales) ? site.locales.slice() : [];
+  const defaultLocale = site.defaultLocale || site.locale || (declaredLocales[0] || "en");
+  if (!declaredLocales.includes(defaultLocale)) declaredLocales.unshift(defaultLocale);
+  const walkOpts = { locales: declaredLocales };
+
   const idx = {
     sitePath,
     manifest,
@@ -171,12 +180,14 @@ function buildSiteIndex(sitePath, manifest, diagnostics) {
     recordUrls: new Map(),         // record → url
     routedCollections: new Set(),
     allRecords: [],
+    locales: declaredLocales,
+    defaultLocale,
   };
 
   // 0) Pages — recursive walk for deep page hierarchies (SPEC §3.1).
   const pagesDir = path.join(sitePath, "pages");
   if (fs.existsSync(pagesDir)) {
-    const pageRecs = enumeratePageTree(sitePath, diagnostics);
+    const pageRecs = enumeratePageTree(sitePath, diagnostics, walkOpts);
     // Apply home.reserved rule on top-level home slug only.
     pageRecs.forEach((rec) => {
       const segs = rec._pathSegments || [];
@@ -201,7 +212,7 @@ function buildSiteIndex(sitePath, manifest, diagnostics) {
       if (!ent.isDirectory()) continue;
       if (ent.name.startsWith(".") || ent.name.startsWith("_")) continue;
       const collName = ent.name;
-      const records = enumerateRecords(sitePath, `collections/${collName}`, diagnostics);
+      const records = enumerateRecords(sitePath, `collections/${collName}`, diagnostics, walkOpts);
       const recordsBySlug = new Map();
       for (const r of records) {
         recordsBySlug.set(r.slug.toLowerCase(), r);

@@ -1,0 +1,21 @@
+{
+  "version": "0.8",
+  "site": {
+    "name": "Locale Suffix",
+    "defaultLocale": "en",
+    "locales": ["en", "uk"]
+  },
+  "types": {
+    "NewsItem": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "body":  { "type": "markdown" }
+      }
+    }
+  },
+  "collections": {
+    "news": { "type": "NewsItem", "defaultMount": "/news" }
+  },
+  "singletons": {},
+  "redirects": []
+}

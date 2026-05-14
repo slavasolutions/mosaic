@@ -1,0 +1,12 @@
+{
+  "version": "0.8",
+  "site": {
+    "name": "Translatable Field",
+    "defaultLocale": "en",
+    "locales": ["en", "uk"]
+  },
+  "types": {},
+  "collections": {},
+  "singletons": {},
+  "redirects": []
+}

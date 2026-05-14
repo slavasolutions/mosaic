@@ -95,7 +95,8 @@ Filled in at acceptance/rejection. Records who decided, when, and why.
 | MIP-0011 | Design tokens as a root singleton           | shipped (0.8) |
 | MIP-0012 | Redirects                                   | shipped (0.8) |
 | MIP-0013 | Home is `/`                                 | shipped (0.8) |
+| MIP-0014 | First-class locales                         | shipped (0.8.1) |
 
 Shipped MIPs are kept for historical record. The current state of the spec is in `spec/SPEC.md`; MIPs are the trail of how it got there.
 
-The 0.7 MIPs (0001–0006) defined the folder-shape baseline. The 0.8 MIPs (0007–0013) close interop holes (0009, 0010), expand `mosaic.json` into a real manifest (0007, 0008), and add the three first-class features 0.7 deferred: design tokens (0011), redirects (0012), and the home route lock (0013).
+The 0.7 MIPs (0001–0006) defined the folder-shape baseline. The 0.8 MIPs (0007–0013) close interop holes (0009, 0010), expand `mosaic.json` into a real manifest (0007, 0008), and add the three first-class features 0.7 deferred: design tokens (0011), redirects (0012), and the home route lock (0013). The 0.8.1 MIP (0014) promotes localization out of engine extensions and into the base spec.
