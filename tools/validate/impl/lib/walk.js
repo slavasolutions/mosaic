@@ -276,13 +276,20 @@ function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
     records.push(rec);
   }
 
-  // 2) Process direct-shape records, skipping any that would collide with a folder of the same slug.
+  // 2) Process direct-shape records, flagging any that collide with a folder of the same slug.
   for (const [slugLiteral, info] of directBySlug) {
     if (folderBySlug.has(slugLiteral)) {
-      // Folder takes precedence; direct files with the same name are extra and ignored.
+      // Folder + direct file with the same slug → two routes / records for the same slug.
+      // For pages/, this is a route collision; for collections it's effectively a duplicate record.
+      // The runner expects mosaic.route.collision at "pages/<slug>".
+      diagnostics.structural(
+        "mosaic.route.collision",
+        path.posix.join(dirRel, slugLiteral),
+        `slug "${slugLiteral}" exists both as a folder and as a direct file`
+      );
       continue;
     }
-    if (!validateSlug(slugLiteral, path.posix.join(dirRel, slugLiteral), diagnostics, info)) {
+    if (!validateSlug(slugLiteral, path.posix.join(dirRel, slugLiteral), diagnostics, { ...info, dirRel })) {
       continue;
     }
     if (!checkSlugCase(slugLiteral, slugCaseMap, dirRel, diagnostics, info)) continue;
@@ -306,11 +313,15 @@ function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
 
 function validateSlug(slug, sourcePath, diagnostics, fileInfo) {
   if (SLUG_RE.test(slug)) return true;
-  // Find a representative file to point at.
+  // Find a representative file to point at, as a path relative to the dir we're walking.
   let src = sourcePath;
   if (fileInfo) {
-    if (fileInfo.jsonAbs) src = relativeOf(fileInfo.jsonAbs);
-    else if (fileInfo.mdAbs) src = relativeOf(fileInfo.mdAbs);
+    const dirRel = fileInfo.dirRel || "";
+    if (fileInfo.jsonAbs) {
+      src = dirRel ? path.posix.join(dirRel, slug + ".json") : slug + ".json";
+    } else if (fileInfo.mdAbs) {
+      src = dirRel ? path.posix.join(dirRel, slug + ".md") : slug + ".md";
+    }
   }
   diagnostics.structural(
     "mosaic.slug.invalid",
@@ -318,12 +329,6 @@ function validateSlug(slug, sourcePath, diagnostics, fileInfo) {
     `slug "${slug}" doesn't match ^[a-z0-9][a-z0-9-]*$`
   );
   return false;
-}
-
-// Tiny helper used only when we need a relative-style path from an abs we constructed inside the loop.
-function relativeOf(abs) {
-  // The walker already passes relative paths where it can; this just trims the prefix if needed.
-  return abs;
 }
 
 function checkSlugCase(slug, slugCaseMap, dirRel, diagnostics, fileInfo) {
