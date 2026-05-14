@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Same Name" },
+  "types": {
+    "TeamConfig": {
+      "fields": { "tagline": { "type": "string" } }
+    },
+    "TeamMember": {
+      "fields": { "title": { "type": "string", "required": true } }
+    }
+  },
+  "collections": { "team": { "type": "TeamMember" } },
+  "singletons": { "team": { "type": "TeamConfig" } },
+  "redirects": []
+}

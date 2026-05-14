@@ -1,4 +1,4 @@
-# 016-collection-list-custom-pattern
+# 016 - collection-list custom URL pattern
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+The mount overrides the default with `urlPattern: "/journal/{slug}"`. The page itself
+keeps `/news`, but record URLs use `/journal/...` (§3.3). No diagnostics.

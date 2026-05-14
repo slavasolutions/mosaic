@@ -617,6 +617,12 @@ Field `type` is one of: `string`, `number`, `boolean`, `date`, `markdown`, `ref`
 
 For `ref`, an optional `to` field scopes the ref to a collection (or `"*"` for any). For `array`, `of` accepts either a primitive type name (`"string"`, `"number"`, ...) or an object `{ "kind": "ref", "to": "<collection>" }` for arrays of refs, or `{ "kind": "object", "fields": {...} }` for arrays of inline objects.
 
+#### 8.3.1 Free-form types (escape hatch)
+
+A type whose `fields` is `{}` (empty) is **free-form**: engines MUST NOT emit `mosaic.field.unknown` for any field on a record bound to it. This is the spec's escape hatch for opaque payloads — most notably DTCG-shaped `tokens.json` (§10), where Mosaic doesn't validate the internal structure but still wants the singleton declared so refs (`ref:tokens@…`) work.
+
+Engine-prefixed fields (`$mosaic.*`, `$clearcms.*`, `$astro.*`, etc.) are also exempt from the unknown-field check on every record, regardless of type. They are reserved namespaces for engines (MIP-0009).
+
 ### 8.4 `collections`
 
 ```json

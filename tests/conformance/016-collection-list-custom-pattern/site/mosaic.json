@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Custom Pattern" },
+  "types": {
+    "NewsItem": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "date": { "type": "date" }
+      }
+    }
+  },
+  "collections": { "news": { "type": "NewsItem" } },
+  "singletons": {},
+  "redirects": []
+}

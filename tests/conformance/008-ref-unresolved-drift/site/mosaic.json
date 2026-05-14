@@ -1,0 +1,14 @@
+{
+  "version": "0.8",
+  "site": { "name": "Ref Unresolved Drift" },
+  "types": {
+    "TeamMember": {
+      "fields": {
+        "title": { "type": "string", "required": true }
+      }
+    }
+  },
+  "collections": { "team": { "type": "TeamMember" } },
+  "singletons": {},
+  "redirects": []
+}

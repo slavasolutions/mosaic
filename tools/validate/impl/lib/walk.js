@@ -298,11 +298,14 @@ function enumerateRecords(siteRoot, dirRel, diagnostics, opts) {
     const sourceAbs = info.jsonAbs || info.mdAbs;
     const sourcePath = relPath(siteRoot, sourceAbs);
 
+    // SPEC §5.5: `./` refs are valid in any record JSON. For a direct (sidecar or
+    // single-JSON) record, the anchor is the parent dir. Only markdown-only records
+    // have no defined "here" (and they have no JSON, so refs can't appear in them anyway).
     const rec = buildRecord(siteRoot, dirRel, slugLiteral, {
       mdAbs: info.mdAbs,
       jsonAbs: info.jsonAbs,
       location: "direct",
-      dataDir: null,
+      dataDir: info.jsonAbs ? dirRel : null,
       sourcePath,
     }, diagnostics);
     records.push(rec);

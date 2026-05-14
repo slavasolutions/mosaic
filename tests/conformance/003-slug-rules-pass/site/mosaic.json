@@ -1,0 +1,10 @@
+{
+  "version": "0.8",
+  "site": { "name": "Slug Rules Pass" },
+  "types": {
+    "Thing": { "fields": { "title": { "type": "string" } } }
+  },
+  "collections": { "things": { "type": "Thing" } },
+  "singletons": {},
+  "redirects": []
+}

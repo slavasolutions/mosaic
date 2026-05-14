@@ -1,4 +1,4 @@
-# 021-frontmatter-forbidden
+# 021 - frontmatter forbidden
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`pages/index.md` opens with a `---` YAML frontmatter block. Frontmatter is forbidden
+per §2.4 / TRUTHS #4. Engines MUST emit structural `mosaic.frontmatter.present`.

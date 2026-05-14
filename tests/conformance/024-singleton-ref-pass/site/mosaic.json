@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Singleton Ref" },
+  "types": {
+    "SiteConfig": {
+      "fields": {
+        "name": { "type": "string" },
+        "contact": { "type": "object" }
+      }
+    }
+  },
+  "collections": {},
+  "singletons": { "site": { "type": "SiteConfig" } },
+  "redirects": []
+}

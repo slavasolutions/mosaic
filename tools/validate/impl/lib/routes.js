@@ -137,6 +137,21 @@ function buildRoutes(siteIndex, diagnostics) {
     fromToMap.set(r.from, r.to);
   }
 
+  // Detect loops once (per cycle, not per node). One diagnostic per cycle is enough.
+  const cycledNodes = new Set();
+  for (const rule of finalRules) {
+    if (cycledNodes.has(rule.from)) continue;
+    const cycle = findCycle(rule.from, fromToMap);
+    if (cycle) {
+      diagnostics.structural(
+        "mosaic.redirect.loop",
+        "mosaic.json",
+        `redirect cycle: ${cycle.join(" -> ")}`
+      );
+      for (const node of cycle) cycledNodes.add(node);
+    }
+  }
+
   for (const rule of finalRules) {
     // Check collision with non-redirect routes.
     const existing = byUrl.get(rule.from);
@@ -147,16 +162,6 @@ function buildRoutes(siteIndex, diagnostics) {
         `redirect "from" "${rule.from}" collides with a ${existing.kind} route`
       );
       continue;
-    }
-    // Check loops: follow from→to chain.
-    if (hasLoop(rule.from, fromToMap)) {
-      diagnostics.structural(
-        "mosaic.redirect.loop",
-        "mosaic.json",
-        `redirect "${rule.from}" participates in a loop`
-      );
-      // Still emit the route entry below? Spec says structural → engine refuses index.
-      // For the validator we still report routes (we don't gate emission of routes on structural errors).
     }
 
     const entry = {
@@ -191,16 +196,24 @@ function addRouteOrCollide(byUrl, routes, diagnostics, entry) {
   );
 }
 
-function hasLoop(start, fromToMap) {
+function findCycle(start, fromToMap) {
+  // Walk from→to until we revisit a node or hit a node with no outgoing edge.
+  // Returns the cycle node list (in order) if a cycle is found, else null.
   let cursor = start;
-  const seen = new Set();
-  for (let i = 0; i < 64; i++) {
-    if (seen.has(cursor)) return true;
-    seen.add(cursor);
-    if (!fromToMap.has(cursor)) return false;
+  const order = [];
+  const seenIndex = new Map();
+  while (cursor !== undefined && cursor !== null) {
+    if (seenIndex.has(cursor)) {
+      // Cycle from seenIndex[cursor] to end of order.
+      return order.slice(seenIndex.get(cursor));
+    }
+    seenIndex.set(cursor, order.length);
+    order.push(cursor);
+    if (!fromToMap.has(cursor)) return null;
     cursor = fromToMap.get(cursor);
+    if (order.length > 64) return order; // suspiciously long → treat as cycle
   }
-  return true; // suspiciously long chain → treat as loop
+  return null;
 }
 
 module.exports = { buildRoutes };

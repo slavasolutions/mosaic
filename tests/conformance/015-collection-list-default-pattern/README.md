@@ -1,4 +1,4 @@
-# 015-collection-list-default-pattern
+# 015 - collection-list default URL pattern
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`pages/news.json` mounts `collections/news` with no `urlPattern`. The default
+`<page-url>/{slug}` produces `/news/foo` and `/news/bar` (§3.3). No diagnostics.

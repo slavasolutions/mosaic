@@ -1,0 +1,10 @@
+{
+  "version": "0.8",
+  "site": { "name": "Unrouted Collection" },
+  "types": {
+    "Orphan": { "fields": { "title": { "type": "string" } } }
+  },
+  "collections": { "orphans": { "type": "Orphan" } },
+  "singletons": {},
+  "redirects": []
+}

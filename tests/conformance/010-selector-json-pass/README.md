@@ -1,4 +1,5 @@
-# 010 — selector resolving into JSON
+# 010 - selector resolving into JSON
 
-`ref:globals/site@contact.email` resolves the global, then dot-paths into `contact.email`.
-No diagnostics expected. Spec §6.5.
+`ref:site@contact.email` resolves the `site` singleton, then dot-paths into `contact.email`.
+The singleton record is `site.json` at the site root (per SPEC §1.4). No diagnostics expected.
+Spec §5.6.

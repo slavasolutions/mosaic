@@ -1,1 +1,10 @@
-{ "_stub": true, "summary": { "structural": 0, "drift": 0, "warning": 0 }, "diagnostics": [] }
+{
+  "summary": { "structural": 0, "drift": 1, "warning": 0 },
+  "diagnostics": [
+    { "severity": "drift", "code": "mosaic.ref.unresolved", "source": "pages/index.json" }
+  ],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/home", "kind": "redirect" }
+  ]
+}

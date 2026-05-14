@@ -1,0 +1,193 @@
+---
+// Section.astro
+// Dispatches on section.type. Mosaic SPEC §4 only normatively defines
+// `collection-list`; all other types are engine-defined. We render a
+// few common shapes used by the hromada example (hero, prose,
+// feature-grid, stat-grid, cta, page-intro, contact-block, form),
+// and fall back to a JSON dump for unknown types so the wireframe
+// still shows authors that *something* is there (SPEC §4.2 requires
+// unknown sections to be preserved).
+
+import { getMosaicSite } from '@mosaic/astro-adapter/runtime';
+
+interface Props {
+  section: any;
+  pageUrl?: string;
+}
+const { section, pageUrl } = Astro.props;
+const site = await getMosaicSite();
+
+// Resolve a "from": "./index.md" stub to raw HTML by scanning the index
+// for whichever record owns the matching .md file.
+function lookupRelMarkdown(rel: any): string | null {
+  if (!rel || typeof rel !== 'object' || !rel.$rel) return null;
+  const target: string = rel.path;
+  for (const p of Object.values<any>(site.pages)) {
+    if (p?.files?.md === target) return p.bodyHtml || '';
+  }
+  for (const col of Object.values<any>(site.collections)) {
+    for (const rec of Object.values<any>(col.records)) {
+      if (rec?.files?.md === target) return rec.bodyHtml || '';
+    }
+  }
+  for (const s of Object.values<any>(site.singletons)) {
+    if (s?.files?.md === target) return s.bodyHtml || '';
+  }
+  return null;
+}
+
+function collectionRecords(from: string, sort?: string, limit?: number) {
+  const m = /^collections\/([^/]+)$/.exec(from || '');
+  if (!m) return [];
+  const col = site.collections[m[1]];
+  if (!col) return [];
+  let recs = Object.values<any>(col.records);
+  if (sort) {
+    const [field, dir] = sort.split(/\s+/);
+    const mul = dir === 'desc' ? -1 : 1;
+    recs = recs.slice().sort((a: any, b: any) => {
+      const av = a.data?.[field] ?? a[field] ?? '';
+      const bv = b.data?.[field] ?? b[field] ?? '';
+      if (av < bv) return -1 * mul;
+      if (av > bv) return  1 * mul;
+      // tie-break on slug (SPEC §4.1)
+      return a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0;
+    });
+  }
+  if (typeof limit === 'number') recs = recs.slice(0, limit);
+  return recs;
+}
+
+function refStubLabel(stub: any): string {
+  if (!stub || typeof stub !== 'object') return String(stub ?? '');
+  if (stub.$ref) return stub.title || stub.$ref;
+  if (stub.$asset) return stub.alt || stub.$asset;
+  return JSON.stringify(stub);
+}
+
+function refStubHref(stub: any): string | null {
+  if (stub && typeof stub === 'object' && stub.$ref) return stub.url || null;
+  return null;
+}
+
+function imageSrc(stub: any): string | null {
+  if (!stub || typeof stub !== 'object') return null;
+  if (stub.$asset) return '/' + stub.$asset;
+  if (stub.$rel) return '/' + stub.path;
+  return null;
+}
+
+// Pre-compute for each branch so the template stays expression-only.
+const heroImg = section.type === 'hero' ? imageSrc(section.image) : null;
+const heroAlt = section.image?.alt || '';
+const proseHtml = section.type === 'prose' ? lookupRelMarkdown(section.from) : null;
+const collectionItems =
+  section.type === 'collection-list'
+    ? collectionRecords(section.from, section.sort, section.limit)
+    : [];
+const KNOWN = [
+  'hero','page-intro','prose','feature-grid','stat-grid',
+  'cta','collection-list','contact-block','form'
+];
+const isKnown = KNOWN.includes(section.type);
+---
+
+{section.type === 'hero' && (
+  <section class="section hero">
+    {section.headline && <h1>{section.headline}</h1>}
+    {section.subhead && <p>{section.subhead}</p>}
+    {heroImg && <img src={heroImg} alt={heroAlt} />}
+    {section.cta && <p><a href={section.cta.url}>{section.cta.label}</a></p>}
+  </section>
+)}
+
+{section.type === 'page-intro' && (
+  <section class="section page-intro">
+    {section.headline && <h1>{section.headline}</h1>}
+    {section.lede && <p>{section.lede}</p>}
+  </section>
+)}
+
+{section.type === 'prose' && (
+  <section class="section prose">
+    {proseHtml
+      ? <Fragment set:html={proseHtml} />
+      : <p class="muted">(prose: unresolved)</p>}
+  </section>
+)}
+
+{section.type === 'feature-grid' && (
+  <section class="section feature-grid">
+    <ul>
+      {(section.items || []).map((it: any) => (
+        <li>
+          {refStubHref(it.ref)
+            ? <a href={refStubHref(it.ref)}>{it.title || refStubLabel(it.ref)}</a>
+            : <span>{it.title || refStubLabel(it.ref)}</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+{section.type === 'stat-grid' && (
+  <section class="section stat-grid">
+    <ul>
+      {(section.items || []).map((it: any) => (
+        <li><span class="value">{it.value}</span><br /><span class="label">{it.label}</span></li>
+      ))}
+    </ul>
+  </section>
+)}
+
+{section.type === 'cta' && (
+  <section class="section cta">
+    {section.headline && <h2>{section.headline}</h2>}
+    {section.url && <p><a href={section.url}>Go &rarr;</a></p>}
+  </section>
+)}
+
+{section.type === 'collection-list' && (
+  <section class="section collection-list">
+    <ul>
+      {collectionItems.map((rec: any) => (
+        <li>
+          {rec.url
+            ? <a href={rec.url}>{rec.title}</a>
+            : <span>{rec.title}</span>}
+          {rec.data?.summary && <> &mdash; <span class="muted">{rec.data.summary}</span></>}
+          {rec.data?.date && <> <span class="muted">({rec.data.date})</span></>}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+{section.type === 'contact-block' && (
+  <section class="section contact-block">
+    {section.email && <p>Email: <span>{refStubLabel(section.email)}</span></p>}
+    {section.phone && <p>Phone: <span>{refStubLabel(section.phone)}</span></p>}
+    {section.address && <p>Address: <span>{refStubLabel(section.address)}</span></p>}
+  </section>
+)}
+
+{section.type === 'form' && (
+  <section class="section form">
+    <form>
+      {(section.fields || []).map((f: string) => (
+        <p><label>{f}<br /><input name={f} /></label></p>
+      ))}
+      <button type="submit">Send</button>
+    </form>
+    <p class="muted">Submits to: {refStubLabel(section.submitTo)}</p>
+  </section>
+)}
+
+{!isKnown && (
+  <section class="section unknown">
+    <details>
+      <summary>section: {section.type}</summary>
+      <pre>{JSON.stringify(section, null, 2)}</pre>
+    </details>
+  </section>
+)}

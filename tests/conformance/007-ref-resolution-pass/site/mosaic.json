@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Ref Resolution Pass" },
+  "types": {
+    "TeamMember": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "role": { "type": "string" }
+      }
+    }
+  },
+  "collections": { "team": { "type": "TeamMember" } },
+  "singletons": {},
+  "redirects": []
+}

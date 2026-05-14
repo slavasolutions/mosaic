@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Record Shapes" },
+  "types": {
+    "Thing": {
+      "fields": {
+        "title": { "type": "string" },
+        "body": { "type": "markdown" }
+      }
+    }
+  },
+  "collections": { "things": { "type": "Thing" } },
+  "singletons": {},
+  "redirects": []
+}

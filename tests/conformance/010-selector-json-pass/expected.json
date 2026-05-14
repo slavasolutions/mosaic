@@ -1,5 +1,10 @@
 {
   "summary": { "structural": 0, "drift": 0, "warning": 0 },
   "diagnostics": [],
-  "notes": "ref:globals/site@contact.email resolves to 'hello@example.com'"
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/contact", "kind": "page" },
+    { "url": "/home", "kind": "redirect" }
+  ],
+  "notes": "ref:site@contact.email resolves to 'hello@example.com'"
 }

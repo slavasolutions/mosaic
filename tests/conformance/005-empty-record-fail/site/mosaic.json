@@ -1,0 +1,10 @@
+{
+  "version": "0.8",
+  "site": { "name": "Empty Record Fail" },
+  "types": {
+    "Thing": { "fields": { "title": { "type": "string" } } }
+  },
+  "collections": { "things": { "type": "Thing" } },
+  "singletons": {},
+  "redirects": []
+}

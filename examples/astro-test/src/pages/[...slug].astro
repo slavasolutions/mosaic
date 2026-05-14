@@ -1,0 +1,186 @@
+---
+// Catch-all: every Mosaic route is injected by the adapter and
+// funneled through here. We look up the route, find the matching
+// page or record, and render it. Wireframe quality.
+
+import { getMosaicSite } from '@mosaic/astro-adapter/runtime';
+import Section from '../components/Section.astro';
+import '../styles/tokens.css';
+
+// Static-build path enumeration. Astro asks every dynamic route file
+// for its concrete URLs even when integrations have already injected
+// them; we re-enumerate from the Mosaic index here.
+export async function getStaticPaths() {
+  const { getMosaicSite } = await import('@mosaic/astro-adapter/runtime');
+  const s = await getMosaicSite();
+  const paths = [];
+  for (const [url, route] of Object.entries(s.routes)) {
+    if (route.kind !== 'page' && route.kind !== 'record') continue;
+    const slug = url === '/' ? undefined : url.slice(1);
+    paths.push({ params: { slug } });
+  }
+  return paths;
+}
+
+const site = await getMosaicSite();
+const slug = Astro.params.slug ?? '';
+const url = '/' + (typeof slug === 'string' ? slug : '');
+const normalized = url === '/' ? '/' : url.replace(/\/$/, '');
+
+const route = site.routes[normalized] || site.routes['/'];
+
+let page: any = null;
+let record: any = null;
+let collectionName: string | null = null;
+
+if (route?.kind === 'page') {
+  page = site.pages[route.target];
+} else if (route?.kind === 'record') {
+  const slash = route.target.indexOf('/');
+  collectionName = route.target.slice(0, slash);
+  const recSlug = route.target.slice(slash + 1);
+  record = site.collections[collectionName]?.records?.[recSlug] ?? null;
+}
+
+const header = site.singletons.header;
+const footer = site.singletons.footer;
+const siteCfg = site.singletons.site;
+
+const pageTitle =
+  (page && page.title) ||
+  (record && record.title) ||
+  site.site?.name ||
+  'Mosaic';
+
+// Pre-compute: does the page have a hero/page-intro section? Then we
+// don't render a top-level <h1>.
+const pageHasTopSection =
+  !!page &&
+  Array.isArray(page.data?.sections) &&
+  page.data.sections.some((s: any) => s && (s.type === 'hero' || s.type === 'page-intro'));
+
+const pageHasProse =
+  !!page &&
+  Array.isArray(page.data?.sections) &&
+  page.data.sections.some((s: any) => s && s.type === 'prose');
+
+// Pre-compute: resolve a relative-markdown stub (like anna's `bio: "./bio.md"`)
+// to its body HTML by looking it up across the index.
+function findBodyHtmlByMdPath(target: string): string | null {
+  for (const col of Object.values<any>(site.collections)) {
+    for (const r of Object.values<any>(col.records)) {
+      if (r?.files?.md === target) return r.bodyHtml || '';
+    }
+  }
+  for (const p of Object.values<any>(site.pages)) {
+    if (p?.files?.md === target) return p.bodyHtml || '';
+  }
+  for (const s of Object.values<any>(site.singletons)) {
+    if (s?.files?.md === target) return s.bodyHtml || '';
+  }
+  return null;
+}
+
+const recordBioHtml =
+  record?.data?.bio?.$rel ? findBodyHtmlByMdPath(record.data.bio.path) : null;
+
+// Hero image source from either an asset stub or a relative stub.
+function imageSrc(stub: any): string | null {
+  if (!stub || typeof stub !== 'object') return null;
+  if (stub.$asset) return '/' + stub.$asset;
+  if (stub.$rel) return '/' + stub.path;
+  return null;
+}
+const recordHeroSrc = record ? imageSrc(record.data?.hero) : null;
+const recordPhotoSrc = record ? imageSrc(record.data?.photo) : null;
+const recordIconSrc = record ? imageSrc(record.data?.icon) : null;
+const recordHeroAlt = record?.data?.hero?.alt || '';
+---
+
+<html lang={site.site?.locale || 'en'}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle} — {site.site?.name}</title>
+  </head>
+  <body>
+    <header class="site">
+      <strong><a href="/">{siteCfg?.data?.name || site.site?.name}</a></strong>
+      {header?.data?.nav && (
+        <nav>
+          <ul>
+            {header.data.nav.map((item: any) => (
+              <li><a href={item.url}>{item.label}</a></li>
+            ))}
+          </ul>
+        </nav>
+      )}
+    </header>
+
+    <main>
+      {page && (
+        <Fragment>
+          {!pageHasTopSection && <h1>{page.title}</h1>}
+
+          {(page.data?.sections || []).map((section: any) => (
+            <Section section={section} pageUrl={normalized} />
+          ))}
+
+          {page.bodyHtml && !pageHasProse && (
+            <section class="section prose" set:html={page.bodyHtml} />
+          )}
+        </Fragment>
+      )}
+
+      {record && (
+        <article>
+          <h1>{record.title}</h1>
+          {record.data?.role && <p class="muted">{record.data.role}</p>}
+          {record.data?.date && <p class="muted">{record.data.date}</p>}
+          {record.data?.location && <p class="muted">{record.data.location}</p>}
+          {record.data?.summary && <p>{record.data.summary}</p>}
+          {record.data?.description && <p>{record.data.description}</p>}
+
+          {recordHeroSrc && <img src={recordHeroSrc} alt={recordHeroAlt} />}
+          {recordPhotoSrc && <img src={recordPhotoSrc} alt={record.title} style="max-width:240px" />}
+          {recordIconSrc && <img src={recordIconSrc} alt="" style="width:48px;height:48px" />}
+
+          {record.bodyHtml && <div class="prose" set:html={record.bodyHtml} />}
+          {recordBioHtml && <div class="prose" set:html={recordBioHtml} />}
+
+          {Array.isArray(record.data?.colleagues) && record.data.colleagues.length > 0 && (
+            <section class="section colleagues">
+              <h2>Colleagues</h2>
+              <ul>
+                {record.data.colleagues.map((c: any) => (
+                  <li>
+                    {c?.url ? <a href={c.url}>{c.title}</a> : <span>{c?.title || c?.$ref}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </article>
+      )}
+
+      {!page && !record && (
+        <section>
+          <h1>Not found</h1>
+          <p class="muted">No Mosaic route matches <code>{normalized}</code>.</p>
+        </section>
+      )}
+    </main>
+
+    <footer class="site">
+      {footer?.data?.copyright && <p>{footer.data.copyright}</p>}
+      {footer?.data?.links && (
+        <ul>
+          {footer.data.links.map((l: any) => {
+            const href = typeof l.url === 'string' ? l.url : (l.url?.url ?? '#');
+            return <li><a href={href}>{l.label}</a></li>;
+          })}
+        </ul>
+      )}
+    </footer>
+  </body>
+</html>

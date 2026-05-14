@@ -1,6 +1,6 @@
 {
   "title": "Contact",
   "sections": [
-    { "type": "email", "value": "ref:globals/site@contact.email" }
+    { "type": "email", "value": "ref:site@contact.email" }
   ]
 }

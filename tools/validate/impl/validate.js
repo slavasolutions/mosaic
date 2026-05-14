@@ -184,6 +184,10 @@ function buildSiteIndex(sitePath, manifest, diagnostics) {
           rec.sourcePath,
           'the slug "home" is reserved at pages/'
         );
+        // Don't mint a route for the reserved page — prevents a downstream
+        // redirect.collision against the auto-injected /home → / redirect.
+        rec._url = null;
+        return;
       }
       rec._url = pageRecordUrl(rec);
     });
@@ -490,9 +494,14 @@ function validateRecordAgainstType(rec, fieldDefs, diagnostics) {
   // Unknown fields: top-level keys in JSON not in fieldDefs.
   // Exempt: "sections" (pages), and "title" if covered, and engine-specific extras.
   // SPEC §6.6 says writers MUST preserve unknown fields — but the validator still reports them.
-  if (rec.json && typeof rec.json === "object" && !Array.isArray(rec.json)) {
+  // SPEC §10 / MIP-0011: a type with empty `fields` is the free-form escape hatch — used
+  // by DesignTokens (DTCG payload is opaque to Mosaic) and any other intentionally opaque
+  // singleton. Skip the unknown-field check in that case.
+  const fieldsIsEmpty = Object.keys(fieldDefs).length === 0;
+  if (rec.json && typeof rec.json === "object" && !Array.isArray(rec.json) && !fieldsIsEmpty) {
     for (const k of Object.keys(rec.json)) {
       if (k === "sections") continue; // pages have arbitrary sections
+      if (k.startsWith("$")) continue;  // engine-prefixed fields ($mosaic.*, $clearcms.*, $astro.*, etc.)
       if (!(k in fieldDefs)) {
         diagnostics.drift(
           "mosaic.field.unknown",
@@ -570,11 +579,9 @@ function runWarningPass(idx, diagnostics) {
   // even if never referenced? SPEC §5.4 wording covers "manifest entry missing but file exists on disk"
   // in the context of a ref. So we already emit it during ref resolution. We do NOT double-emit here.
 
-  // Unmounted collections: SPEC §6.4 lists this as a warning. Reporting warnings is
-  // "optional but RECOMMENDED" per §6.1. The conformance tests do not expect this warning
-  // for sites that simply have an unmounted collection (treating it as legitimate, see
-  // SPEC §3.7 "Unrouted collections"). So we suppress the unmounted warning here.
-  // Enable with --strict if the host wants explicit emission.
+  // Unmounted collections: SPEC §6.4 lists this as a warning, "optional but RECOMMENDED"
+  // per §6.1. Suppressed by default to match the most-common author intent
+  // (unrouted collections are blessed by §3.7). Enable with --strict for opinionated CI.
   void idx;
 }
 

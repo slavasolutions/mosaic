@@ -1,0 +1,26 @@
+{
+  "name": "@mosaic/astro-adapter",
+  "version": "0.8.0",
+  "description": "Astro integration that exposes a Mosaic 0.8 site as content collections (embedded-engine mode per SPEC §0.2).",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./runtime": "./src/runtime.js",
+    "./load-site": "./src/load-site.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "astro": "^4"
+  },
+  "dependencies": {
+    "marked": "^12"
+  },
+  "license": "MIT"
+}

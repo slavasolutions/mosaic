@@ -1,4 +1,5 @@
-# 008-ref-unresolved-drift
+# 008 - ref unresolved drift
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`pages/index.json` references `ref:team/ghost`, but no record `ghost` exists in the
+`team` collection. The site builds, but emits one drift diagnostic
+`mosaic.ref.unresolved`. Spec §6.3.

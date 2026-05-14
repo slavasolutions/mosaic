@@ -1,4 +1,6 @@
-# 025-unrouted-collection-pass
+# 025 - unrouted collection produces warning
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`collections/orphans/alpha.json` exists, but no page mounts the collection and no other
+record references it. Records remain addressable by ref but have no URL (§3.7). A
+warning `mosaic.collection.unmounted` is emitted (§6.4). Routes MUST NOT include
+`/orphans/alpha`.

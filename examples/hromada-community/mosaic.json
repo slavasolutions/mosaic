@@ -68,10 +68,8 @@
       }
     },
     "DesignTokens": {
-      "description": "DTCG-shaped design tokens. Free-form object; Mosaic does not validate DTCG internals.",
-      "fields": {
-        "tokens": { "type": "object" }
-      }
+      "description": "DTCG-shaped design tokens. Free-form: Mosaic does not validate DTCG internals (SPEC §10; empty `fields` is the opaque-type escape hatch).",
+      "fields": {}
     }
   },
   "collections": {

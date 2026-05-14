@@ -1,0 +1,60 @@
+/* Derived from examples/hromada-community/tokens.json (DTCG).
+   Hand-flattened — a token-aware renderer would generate this. */
+:root {
+  --color-background: #fffdf7;
+  --color-text:       #1a1a1a;
+  --color-accent:     #005bbb;
+  --color-muted:      #6b6b6b;
+
+  --font-body:      system-ui, sans-serif;
+  --font-heading:   Georgia, 'Times New Roman', serif;
+  --font-size-base: 16px;
+
+  --space-s: 8px;
+  --space-m: 16px;
+  --space-l: 32px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-background);
+  line-height: 1.5;
+}
+
+h1, h2, h3 { font-family: var(--font-heading); margin: 0 0 var(--space-m); }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; }
+
+a { color: var(--color-accent); }
+
+main { max-width: 800px; margin: 0 auto; padding: var(--space-l) var(--space-m); }
+
+header.site, footer.site {
+  padding: var(--space-m);
+  border-bottom: 1px solid #eee;
+}
+footer.site { border-top: 1px solid #eee; border-bottom: none; margin-top: var(--space-l); color: var(--color-muted); }
+header.site nav ul, footer.site ul { list-style: none; padding: 0; margin: 0; display: flex; gap: var(--space-m); flex-wrap: wrap; }
+
+.section { margin-bottom: var(--space-l); }
+.section.hero { padding: var(--space-l) 0; }
+.section.hero img { max-width: 100%; height: auto; }
+.section.collection-list ul { padding-left: var(--space-m); }
+.section.feature-grid ul, .section.stat-grid ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-m);
+  list-style: none;
+  padding: 0;
+}
+.section.stat-grid li { background: #f4f4f4; padding: var(--space-m); border-radius: 4px; }
+.section.stat-grid .value { font-size: 1.5rem; font-weight: bold; }
+
+.prose img { max-width: 100%; }
+.muted { color: var(--color-muted); font-size: 0.9rem; }

@@ -1,0 +1,10 @@
+{
+  "version": "0.8",
+  "site": { "name": "Tokens Singleton" },
+  "types": {
+    "DesignTokens": { "fields": {} }
+  },
+  "collections": {},
+  "singletons": { "tokens": { "type": "DesignTokens" } },
+  "redirects": []
+}

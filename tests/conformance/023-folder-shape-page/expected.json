@@ -1,1 +1,9 @@
-{ "_stub": true, "summary": { "structural": 0, "drift": 0, "warning": 0 }, "diagnostics": [] }
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/about", "kind": "page" },
+    { "url": "/home", "kind": "redirect" }
+  ]
+}

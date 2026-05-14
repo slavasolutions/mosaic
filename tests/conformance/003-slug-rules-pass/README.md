@@ -1,4 +1,4 @@
-# 003-slug-rules-pass
+# 003 - slug rules pass
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+All slugs match `^[a-z0-9][a-z0-9-]*$` (SPEC §2.5). Pure lowercase, digits, and hyphens.
+No diagnostics.

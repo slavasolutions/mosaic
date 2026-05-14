@@ -1,4 +1,4 @@
-# 012-selector-unresolved-drift
+# 012 - selector unresolved drift
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+The record `about/company` exists, but the selector `@nonexistent-heading` matches neither
+a JSON path nor a markdown heading. Spec §5.6 mandates `mosaic.selector.unresolved` (drift).

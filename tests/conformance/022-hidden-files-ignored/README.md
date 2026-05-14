@@ -1,4 +1,5 @@
-# 022-hidden-files-ignored
+# 022 - hidden files ignored
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+Files starting with `.` or `_` are ignored per §2.6. Sites with `.DS_Store` and `_draft.md`
+in `pages/` validate cleanly and produce no spurious routes. Only `pages/index.md`
+contributes the `/` route.

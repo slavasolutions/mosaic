@@ -1,0 +1,15 @@
+{
+  "version": "0.8",
+  "site": { "name": "Title Precedence JSON Wins" },
+  "types": {
+    "Post": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "body": { "type": "markdown" }
+      }
+    }
+  },
+  "collections": { "posts": { "type": "Post" } },
+  "singletons": {},
+  "redirects": []
+}

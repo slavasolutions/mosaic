@@ -1,0 +1,10 @@
+{
+  "title": "News",
+  "sections": [
+    {
+      "type": "collection-list",
+      "from": "collections/news",
+      "urlPattern": "/journal/{slug}"
+    }
+  ]
+}

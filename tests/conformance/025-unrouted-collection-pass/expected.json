@@ -1,1 +1,9 @@
-{ "_stub": true, "summary": { "structural": 0, "drift": 0, "warning": 0 }, "diagnostics": [] }
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/home", "kind": "redirect" }
+  ],
+  "notes": "An unrouted collection is permitted per SPEC §3.7. Reporting `mosaic.collection.unmounted` is permitted by §6.4 but optional per §6.1 (warnings are 'optional but RECOMMENDED'). The default reference validator suppresses it; engines that want it can opt in via --strict. Pass criteria: no structural/drift, and the unmounted collection's records are NOT in the route table."
+}

@@ -1,1 +1,10 @@
-{ "_stub": true, "summary": { "structural": 0, "drift": 0, "warning": 0 }, "diagnostics": [] }
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 1 },
+  "diagnostics": [
+    { "severity": "warning", "code": "mosaic.title.dead-h1", "source": "collections/posts/example.md" }
+  ],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/home", "kind": "redirect" }
+  ]
+}

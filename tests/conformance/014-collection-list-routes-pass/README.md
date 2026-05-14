@@ -1,4 +1,5 @@
-# 014-collection-list-routes-pass
+# 014 - collection-list mints routes
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`pages/news.json` mounts `collections/news` with a `collection-list` section. The page
+gets `/news`, and each record gets `<page-url>/{slug}` per the default pattern (§3.3).
+No diagnostics.

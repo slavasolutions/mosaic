@@ -1,4 +1,4 @@
-# 023-folder-shape-page
+# 023 - folder-shape page
 
-Test stub. Site folder is structured but content has not yet been written.
-See tests/README.md for the format. Pull request to fill this in.
+`pages/about/index.md` is the folder-shape variant of `pages/about.md` (§2.2). URL
+minting strips trailing `/index.md`, so the route is `/about`. No diagnostics.
