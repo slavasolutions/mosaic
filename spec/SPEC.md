@@ -1,125 +1,173 @@
 # Mosaic Specification
 
-**Version:** 0.7 (draft)
+**Version:** 0.8
 **Status:** Stabilizing toward 1.0
+**Foundations:** [`TRUTHS.md`](../TRUTHS.md)
 
 ---
 
-## 1. Introduction
+## 0. About this spec
 
-Mosaic is a folder layout for web content. A site is a directory tree. The filesystem is the source of truth. Engines, frameworks, and agents consume that tree by following the rules in this document.
+Mosaic is a folder layout for web content. A site is a directory tree. The filesystem is the source of truth. Engines, frameworks, agents, and humans read that tree by following the rules here.
 
-Mosaic is framework-agnostic. It says nothing about how a site is rendered, served, hosted, or stored at runtime. It only says what a valid site looks like on disk and how to resolve the addresses inside it.
+Mosaic says nothing about how a site is rendered, served, hosted, or stored at runtime. It only says what a valid site looks like on disk and how to resolve the addresses inside it.
 
-### 1.1 Conformance
+Every normative rule in this document derives from one of the seventeen truths in [`TRUTHS.md`](../TRUTHS.md). Reading the truths first is the fastest way to understand the spec.
+
+### 0.1 Conformance language
 
 The words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are used in the sense of RFC 2119.
 
-A *conforming site* is a directory that satisfies the structural and content rules in sections 2 through 7.
+A *conforming site* is a directory that satisfies §2–§7.
+A *conforming engine* is a tool that reads a conforming site, produces an index conforming to §8, and resolves refs per §6.
 
-A *conforming engine* is any tool that reads a conforming site, produces an index conforming to section 8, and resolves refs per section 6.
+### 0.2 Native and embedded engines
+
+A conforming engine MAY:
+
+- Use the produced route table directly to serve URLs (**native operation**).
+- Treat the index purely as a queryable content store and let a host framework own routing (**embedded operation**).
+
+The folder layout, ref grammar, and resolution rules are identical in both modes. The route table is always produced; whether an engine acts on it is implementation-defined. Embedded engines plug Mosaic content into Astro, Next, SvelteKit, Remix, etc.
 
 ---
 
-## 2. Top-level layout
+## 1. Folder layout
 
-A Mosaic site is a directory containing the following children. All are required unless marked optional.
+A Mosaic site is a directory containing the following structure. Items marked OPTIONAL may be omitted.
 
 ```
-<site-root>/
-  mosaic.json         site schema and config (required)
+my-site/
+  mosaic.json         the manifest (required)
   pages/              routed pages (required, may be empty)
   collections/        collection definitions (required, may be empty)
-  globals/            singleton records (required, may be empty)
   images/             binary assets (optional)
+  <singleton>.json    singleton records, at the root (zero or more)
+  <singleton>.md
 ```
 
 Any other top-level files or directories are ignored by conforming engines. Authors MAY use them for tooling, source control, build output, etc.
 
-### 2.1 The `mosaic.json` file
+### 1.1 `mosaic.json` — the manifest
 
-`mosaic.json` is the schema and minimal site config. It defines:
+`mosaic.json` declares what the site **should be**: identity, types, collections (with defaults), singletons, redirects, and design tokens. The folder is what the site **currently is**.
 
-- Types used by records (fields, validations, references)
-- Site-level settings (name, default locale, build hints)
+`mosaic.json` is hand-authored. It MUST NOT contain a route table, a content listing, or any derived data. Full schema in §9.
 
-`mosaic.json` is hand-authored. It is the contract that content conforms to. It MUST NOT contain a route table, a content listing, or any derived data.
+### 1.2 `pages/`
 
-The full schema for `mosaic.json` is given in section 9.
+Each file or folder under `pages/` becomes a routed page. The path from `pages/` to the page determines its URL. See §3.
 
-### 2.2 The `pages/` directory
-
-Each file or folder directly under `pages/` (or transitively, see section 3.2) becomes a routed page. The path from `pages/` to the page determines its URL.
-
-### 2.3 The `collections/` directory
+### 1.3 `collections/`
 
 Each immediate child directory of `collections/` is a collection. The directory name is the collection's name. Files inside are records of that collection.
 
-Collections are not routed by themselves. A page in `pages/` routes a collection's records by declaring a `collection-list` section (section 5).
+Collections are not routed by themselves. A page in `pages/` routes a collection's records by declaring a `collection-list` section (§4).
 
-### 2.4 The `globals/` directory
+### 1.4 Singletons (at the root)
 
-Each file directly under `globals/` is a singleton record, addressable by its filename stem. Globals are not routed. They are referenced by name from anywhere.
+Each singleton declared in `mosaic.json#singletons` corresponds to one record at the **site root**: a `<name>.json` file, a `<name>.md` file, or both. Singleton records follow the same record-shape rules as collection records (§2).
 
-### 2.5 The `images/` directory
+Singletons are not routed. They are referenced from anywhere via `ref:<name>` (§5).
 
-Binary assets live under `images/`. A manifest at `images/manifest.json` MAY record metadata for each asset (dimensions, alt text, etc.). Assets are addressed via `asset:` refs (section 6).
+By convention, the following singletons appear in most sites:
+
+- `site` — site-wide content (contact info, tagline, social handles)
+- `header` — top-of-page navigation content
+- `footer` — bottom-of-page content
+- `tokens` — design tokens (§10)
+- `redirects` — redirect rules (alternative to declaring inline in `mosaic.json`)
+
+No singleton is required. Use whatever the site needs.
+
+### 1.5 `images/`
+
+Binary assets live under `images/`. A manifest at `images/manifest.json` MAY record metadata for each asset (dimensions, alt text, etc.). The shape of `images/manifest.json` is given in §1.6. Assets are addressed via `asset:` refs (§5.4).
+
+### 1.6 `images/manifest.json`
+
+If present, `images/manifest.json` is a flat object keyed by the asset's path under `images/`:
+
+```json
+{
+  "logo.svg": { "width": 200, "height": 60, "alt": "Site logo", "mime": "image/svg+xml" },
+  "hero.jpg": { "width": 1920, "height": 1080, "alt": "...", "mime": "image/jpeg" }
+}
+```
+
+Engines MUST tolerate unknown fields per record. Authors MAY add their own (`sha256`, `caption`, etc.). Engines MUST preserve unknown fields verbatim (§7.6).
+
+### 1.7 Reserved root names
+
+The following names at the site root are NEVER treated as singletons, regardless of what `mosaic.json` declares:
+
+- `mosaic.json`
+- `README.md`, `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `AGENTS.md`
+- `pages`, `collections`, `images`
+- Any file or directory whose name begins with `.` or `_`
+
+A singleton declared in `mosaic.json` whose name collides with this list is a structural error (`mosaic.singleton.reserved`).
 
 ---
 
-## 3. Records and shapes
+## 2. Records and shapes
 
-A *record* is one unit of content. Pages, collection items, and globals are all records.
+A *record* is one unit of content. Pages, collection items, and singletons are all records.
 
-### 3.1 Record content rule
+### 2.1 Record content
 
-A record consists of zero or one markdown file and zero or one JSON file. At least one MUST exist.
+A record consists of zero or one markdown file and zero or one JSON file. **At least one MUST exist.**
 
-This produces three valid combinations:
+| Markdown | JSON | Use case |
+|----------|------|----------|
+| yes      | no   | Prose-only records |
+| no       | yes  | Data-only records |
+| yes      | yes  | Prose with structured fields |
 
-| Markdown | JSON | Use case                              |
-|----------|------|---------------------------------------|
-| yes      | no   | Prose-only records                    |
-| no       | yes  | Data-only records                     |
-| yes      | yes  | Prose with structured fields          |
-
-### 3.2 Record location
+### 2.2 Record location
 
 A record exists in one of two locations:
 
 - **Direct.** A `.md` file, a `.json` file, or a matching pair (`<slug>.md` + `<slug>.json`) directly inside its parent directory. The filename stem is the slug.
-- **Folder.** A directory whose name is the slug, containing `index.md`, `index.json`, or both. The folder MAY also contain co-located assets and additional files referenced by relative refs.
+- **Folder.** A directory whose name is the slug, containing `index.md`, `index.json`, or both. The folder MAY also contain co-located assets and additional files referenced by relative refs (§5.5).
 
 Authors MAY choose location per record. A single collection MAY mix direct and folder records freely.
 
-### 3.3 Precedence between markdown and JSON
+### 2.3 Title precedence and required-title
 
-When both files exist in a record:
+When a record needs a title, engines MUST resolve it in this order:
 
-- Structured fields come from JSON.
-- Prose body comes from markdown.
-- A field named `title` follows precedence: JSON > markdown H1 > filename slug (title-cased).
-- No other fields are read from markdown. Frontmatter (YAML, TOML, or otherwise) is forbidden; conforming engines MUST NOT parse markdown frontmatter.
+1. **JSON `title` field.** If present and non-empty, use it.
+2. **First markdown H1.** If JSON has no `title` and the markdown body starts (after optional blank lines) with an `# H1`, use the H1 text.
+3. **Filename slug, title-cased.** Fallback. `2025-launch` → "2025 Launch".
 
-### 3.4 Slug rules
+If a record's type declares `title` as `required: true`, validation MUST run against the **resolved** title. A record that has no JSON `title` but has an H1 satisfies a required-title constraint.
 
-Slugs MUST match the regex `^[a-z0-9][a-z0-9-]*$`.
+When both a JSON `title` and a markdown H1 exist in the same record, the JSON wins and the H1 becomes "dead text". Engines SHOULD emit a `mosaic.title.dead-h1` warning.
 
-Filename matching is case-sensitive on disk; engines MUST treat slugs as case-insensitive for lookup and route minting. Two records whose slugs differ only in case are a conflict and MUST be reported as a structural error (section 7.4).
+### 2.4 No frontmatter
 
-### 3.5 Reserved names
+Frontmatter (YAML, TOML, or otherwise) is forbidden. Conforming engines MUST NOT parse markdown frontmatter. A markdown file beginning with `---` followed by a YAML block is a structural error (`mosaic.frontmatter.present`).
+
+### 2.5 Slug rules
+
+Slugs MUST match `^[a-z0-9][a-z0-9-]*$`.
+
+Filename matching is case-sensitive on disk. Engines MUST treat slugs as case-insensitive for ref lookup and route minting. Two records whose slugs differ only in case are a conflict (`mosaic.slug.case`).
+
+### 2.6 Reserved names within records
 
 Engines MUST ignore:
 
 - Files and directories whose name begins with `.` or `_`
 - The literal name `manifest.json` inside `images/`
-- The literal name `index.md` and `index.json` outside a folder-shape record
+- The literal names `index.md` and `index.json` outside a folder-shape record
 
 ---
 
-## 4. Routing
+## 3. Routing
 
-### 4.1 Page routes
+### 3.1 Page routes
 
 A page at `pages/<path>` is routed at URL `/<path>`, with these transformations:
 
@@ -127,18 +175,24 @@ A page at `pages/<path>` is routed at URL `/<path>`, with these transformations:
 - A `.md` or `.json` extension is stripped.
 - `pages/index.{md,json}` routes to `/`.
 
-Examples:
-
-| File                                | URL                  |
-|-------------------------------------|----------------------|
-| `pages/index.json`                  | `/`                  |
-| `pages/about.md`                    | `/about`             |
-| `pages/services.json`               | `/services`          |
+| File | URL |
+|------|-----|
+| `pages/index.json` | `/` |
+| `pages/about.md` | `/about` |
+| `pages/services.json` | `/services` |
 | `pages/annual-report-2024/index.json` | `/annual-report-2024` |
 
-### 4.2 Collection routes
+### 3.2 Home is `/`
 
-Collections are routed by pages, not by themselves. A page declares routing by including a `collection-list` section in its JSON:
+`pages/index.{md,json}` produces the route `/`. The slug `home` at the top level of `pages/` is reserved: a file named `pages/home.md`, `pages/home.json`, or a folder `pages/home/` MUST be reported as a structural error (`mosaic.home.reserved`).
+
+Engines MUST emit an automatic redirect from `/home` to `/` (see §3.6). This is the only redirect produced without an explicit declaration.
+
+This prevents the common error where authors create both `pages/index` and `pages/home`, then link inconsistently from navigation.
+
+### 3.3 Collection routes via `collection-list`
+
+A page declares routing for a collection by including a `collection-list` section in its JSON:
 
 ```json
 {
@@ -149,9 +203,7 @@ Collections are routed by pages, not by themselves. A page declares routing by i
 }
 ```
 
-The page MUST list the records in the collection. By default, it also mints a route per record.
-
-The default URL pattern for minted routes is `<page-url>/{slug}`. Authors MAY override with an explicit `urlPattern` field:
+The page MUST list the records in the collection. By default, it also mints a route per record using the pattern `<page-url>/{slug}`. Authors MAY override with an explicit `urlPattern`:
 
 ```json
 {
@@ -161,102 +213,189 @@ The default URL pattern for minted routes is `<page-url>/{slug}`. Authors MAY ov
 }
 ```
 
-`{slug}` is the only required substitution variable. Engines MAY support additional variables (`{year}`, `{date}`, etc.) but those are non-normative in v0.7.
+`{slug}` is the only required substitution variable in 0.8. Engines MAY support additional variables (`{year}`, `{date}`, etc.) — those are non-normative.
 
-A `collection-list` section MAY opt out of minting detail routes by setting `"routes": false`:
+If `mosaic.json` declares a `defaultSort` or `defaultMount` for the collection (§9.4), engines MAY use those as fallbacks when the section omits them. The fallback is non-normative: engines MAY ignore the defaults.
+
+### 3.4 `routes: false`
+
+A `collection-list` MAY opt out of minting detail routes:
 
 ```json
 { "type": "collection-list", "from": "collections/news", "limit": 3, "routes": false }
 ```
 
-This is useful when a page (e.g. a homepage) wants to display records from a collection without claiming responsibility for their detail URLs. Another page is expected to mount the collection with routing enabled.
+Useful when a page (typically the homepage) displays records from a collection without claiming responsibility for their detail URLs. Another page is expected to mount the collection with routing enabled.
 
-### 4.3 Multiple mounts
+Engines MUST NOT report a collision for a `routes: false` mount.
 
-The same collection MAY be mounted by multiple pages with different sorts, limits, filters, or URL patterns. Each mount is independent.
+### 3.5 Multiple mounts
 
-If two routing mounts produce the same URL for different records, or different URLs for the same record, that is a route collision (section 7.4). Mounts with `"routes": false` do not participate in collision checks.
+The same collection MAY be mounted by multiple pages. Each mount is independent.
 
-If multiple routing mounts produce identical URLs for the same record (same pattern, same collection), engines MUST mint the route once. This is not a collision.
+- Different URLs for the same record → route collision (structural).
+- Identical URLs for the same record (same pattern) → engines mint the route once. Not a collision.
+- One `routes: true` mount and any number of `routes: false` mounts → never a collision.
 
-### 4.4 Unrouted collections
+### 3.6 Redirects
 
-A collection MAY exist without any page mounting it. Its records are addressable by ref but have no URL. Engines MUST NOT mint a URL for such records.
+Redirects are declared in `mosaic.json#redirects` as an array:
+
+```json
+"redirects": [
+  { "from": "/old-news", "to": "/news", "status": 301 },
+  { "from": "/team/anna-k", "to": "/team/anna", "status": 301 }
+]
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `from` | string | yes | Old URL path. MUST start with `/`. |
+| `to` | string | yes | New URL path or absolute URL. |
+| `status` | integer | no | HTTP status (301, 302, 307, 308). Default `301`. |
+
+Engines MUST:
+
+- Add one entry per redirect to the route table with `kind: "redirect"`.
+- Add the automatic `/home → /` redirect (§3.2).
+- Detect redirect loops (`A → B → A`) and report as structural (`mosaic.redirect.loop`).
+- Detect a redirect `from` that collides with a real route and report as structural (`mosaic.redirect.collision`).
+
+Native engines apply redirects server-side via HTTP status responses. Embedded engines surface the redirect table to the host framework's routing layer. Wireframe renderers MAY emit `<meta http-equiv="refresh">` placeholders.
+
+Redirects MAY also live in a `redirects` singleton at the root (`redirects.json` with a `rules` array of the same shape). If both `mosaic.json#redirects` and a `redirects` singleton exist, the singleton wins, and engines SHOULD emit `mosaic.redirect.duplicate-source` warning.
+
+### 3.7 Unrouted collections
+
+A collection MAY exist without any page mounting it. Its records are addressable by ref but have no URL. Engines MUST NOT mint a URL for such records. The record's `url` field in the index is `null`.
 
 ---
 
-## 5. Page sections
+## 4. Sections
 
-A page's JSON MAY include a `sections` array. Each section is an object with a `type` field. The spec defines one section type with normative behavior:
+A page's JSON MAY include a `sections` array. Each section is an object with a `type` field.
 
-### 5.1 `collection-list`
+### 4.1 `collection-list` (normative)
 
-Routes a collection and renders a list of its records on the page.
+The only section type with normative behavior.
 
-| Field         | Type    | Required | Description                          |
-|---------------|---------|----------|--------------------------------------|
-| `type`        | string  | yes      | Literal `"collection-list"`          |
-| `from`        | string  | yes      | Path to collection (e.g. `collections/news`) |
-| `sort`        | string  | no       | `<field> <asc\|desc>` (default `date desc` if `date` exists, else filesystem order) |
-| `limit`       | integer | no       | Max records to list                  |
-| `filter`      | object  | no       | Field-equality filter (non-normative) |
-| `urlPattern`  | string  | no       | URL template; default `<page-url>/{slug}` |
-| `routes`      | boolean | no       | If `false`, list without minting detail routes; default `true` |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | string | yes | Literal `"collection-list"` |
+| `from` | string | yes | Path to collection (e.g. `collections/news`) |
+| `sort` | string | no | `<field> <asc\|desc>` |
+| `limit` | integer | no | Max records to list |
+| `filter` | object | no | Field-equality filter (non-normative) |
+| `urlPattern` | string | no | URL template; default `<page-url>/{slug}` |
+| `routes` | boolean | no | If `false`, list without minting detail routes; default `true` |
 
-All other section types are engine-defined. Engines MUST preserve unknown section types verbatim in the index so other consumers can interpret them.
+Default sort: if the collection's records have a `date` field, default to `date desc`. Otherwise, default to filesystem order. When the sort key produces ties, engines MUST break ties by slug ascending — this guarantees deterministic output across engines.
+
+### 4.2 Custom sections
+
+All other section types are engine-defined. Engines MUST preserve unknown section types verbatim in the index so other consumers can interpret them. This is a specific case of the universal preservation rule (§7.6).
 
 ---
 
-## 6. References
+## 5. References
 
 A *ref* is a string that points to another piece of content. Refs have one of four forms.
 
-### 6.1 Ref grammar
+### 5.1 The four forms
 
+- `ref:<address>` — a record (singleton or collection record)
+- `asset:<path>` — a binary asset under `images/`
+- `./<path>` — a path relative to the JSON file containing the ref
+- A `@selector` suffix on `ref:` or `./` — addresses a sub-part of the resolved record
+
+### 5.2 ABNF grammar
+
+```abnf
+ref-string     = ref-token / asset-token / relative-token
+ref-token      = "ref:" address [ "@" selector ]
+asset-token    = "asset:" asset-path
+relative-token = "./" rel-path [ "@" selector ]
+
+address        = singleton-name / ( collection-name "/" slug )
+singleton-name = name
+collection-name= name
+slug           = lower-alnum *( "-" / lower-alnum )
+name           = lower-alnum *( "-" / lower-alnum )
+asset-path     = path-segment *( "/" path-segment )
+rel-path       = path-segment *( "/" path-segment )
+path-segment   = 1*( ALPHA / DIGIT / "_" / "-" / "." )
+selector       = json-path / heading-slug
+lower-alnum    = "a" / "b" / ... / "z" / DIGIT
 ```
-ref         = ref-token | asset-token | relative-token
-ref-token   = "ref:" address [ "@" selector ]
-asset-token = "asset:" path
-relative-token = "./" path [ "@" selector ]
-address     = ( "globals/" name ) | ( collection "/" slug )
-selector    = JSON path | markdown heading slug
-```
 
-### 6.2 `ref:` — record references
+`json-path` and `heading-slug` are defined in §5.6. Engines MUST reject refs that fail this grammar with `mosaic.ref.malformed`.
 
-`ref:<address>` resolves to a record.
+### 5.3 Addresses split on the first `/`
 
-- `ref:globals/site` → `globals/site.json`
-- `ref:team/anna` → the record at slug `anna` in collection `team`, whatever its shape
-- `ref:news/2025-03-12-launch` → that news item
+For `ref:` addresses:
 
-Engines MUST resolve refs shape-agnostically. The caller does not know or care whether the target is a direct file, a sidecar pair, or a folder.
+1. If the address contains no `/`, treat it as a singleton name. Look up `<name>.json` and/or `<name>.md` at the site root.
+2. If the address contains `/`, split on the **first** `/`. The part before is a collection name, the part after is a record slug.
 
-### 6.3 `asset:` — asset references
+A singleton named `team` and a collection named `team` MAY coexist. `ref:team` resolves to the singleton; `ref:team/anna` resolves to a record. The first-`/` rule disambiguates without any reserved-name machinery.
 
-`asset:images/<path>` resolves to a binary asset under `images/`. Engines MUST look up the asset's metadata in `images/manifest.json` if present.
+### 5.4 `asset:` resolution
 
-### 6.4 `./` — relative references
+`asset:images/<path>` resolves to a binary asset under `images/`. Engines MUST look up the asset's metadata in `images/manifest.json` if present. If the manifest entry is missing but the file exists on disk, engines MUST emit `mosaic.asset.unmanifested` (warning) and continue.
 
-`./<path>` is resolved relative to the JSON file that contains it. Only valid inside a record's JSON. Used to point at co-located files in folder-shape or sidecar records.
+### 5.5 `./` — relative references
 
-- Inside `collections/news/2025-05-15-recap/index.json`, `"./hero.jpg"` resolves to `collections/news/2025-05-15-recap/hero.jpg`.
+`./<path>` is resolved relative to the JSON file containing the ref. Only valid inside a record's JSON.
 
-Relative refs in markdown-only records have no defined "here" — engines MUST report them as errors.
+Inside `collections/news/2025-05-15-recap/index.json`, `"./hero.jpg"` resolves to `collections/news/2025-05-15-recap/hero.jpg`.
 
-### 6.5 Selectors
+A relative ref in a markdown-only record has no defined "here" — engines MUST report it as `mosaic.relative.invalid` (structural).
 
-A ref MAY include an `@selector` to address a part of the resolved record.
+### 5.6 Selectors
 
-- For JSON targets: selector is a dot-path into the resolved JSON. `ref:globals/site@contact.email` resolves to the value at `contact.email`.
-- For markdown targets: selector is a heading slug (lowercase, spaces → hyphens, punctuation stripped). `ref:news/launch@our-mission` resolves to the section under that heading, up to but not including the next heading at the same or higher level.
-- For records with both JSON and markdown: JSON path takes precedence. If the selector matches no JSON path, engines fall back to markdown heading lookup. If neither matches, the ref is unresolved (drift error per section 7).
+A ref MAY include an `@selector` to address a sub-part of the resolved record.
 
-Selectors MAY appear on `ref:` and `./` forms. They MUST NOT appear on `asset:` forms (assets are opaque).
+**JSON path selectors** target structured fields:
 
-### 6.6 Ref expansion in the index
+- Dot path: `ref:site@contact.email` → the value at `contact.email`.
+- Array index: `ref:header@nav.0.label` → the `label` of the first nav item. Zero-based, integer-only.
+- Nested mix: `ref:site@social.platforms.2.url`.
 
-Refs are not eagerly inlined. When an engine produces the index (section 8), each ref MUST be represented as a stub:
+Each segment MUST match `[a-z0-9_-]+` for object keys, or be a non-negative integer for array indices.
+
+**Markdown heading selectors** target a section of prose. The selector is the heading slug, computed as:
+
+1. Strip leading `#` characters and one space.
+2. Lowercase.
+3. Replace runs of whitespace with single hyphens.
+4. Strip characters not in `[a-z0-9-]`.
+5. Trim leading/trailing hyphens.
+
+Example: `## Where the name comes from` → `where-the-name-comes-from`. The selection runs from the heading line up to (but not including) the next heading at the same or higher level.
+
+**Precedence.** For records with both JSON and markdown:
+
+1. Try the JSON path. If it resolves, use it.
+2. Otherwise, try the markdown heading. If it resolves, use it.
+3. Otherwise, `mosaic.selector.unresolved` (drift).
+
+Selectors MAY appear on `ref:` and `./` forms. They MUST NOT appear on `asset:` forms — assets are opaque.
+
+### 5.7 How engines detect refs
+
+A ref is recognised by the **string prefix** of any JSON value, anywhere in a record's JSON. Specifically, engines MUST scan every string value in record JSON and treat the value as a ref if it begins with:
+
+- `ref:`
+- `asset:`
+- `./`
+
+Engines MUST NOT use the schema to decide whether a field is a ref. The schema describes shape; the value describes intent. A field declared `type: "string"` whose value happens to be `"asset:images/foo.png"` is a ref, and engines MUST resolve it.
+
+This rule means refs work inside arbitrary section JSON, inside arrays, inside nested objects, and inside engine-specific custom sections without any registration step.
+
+### 5.8 Stubs in the index
+
+Refs are not eagerly inlined. When an engine produces the index (§8), each ref MUST be represented as a stub:
 
 ```json
 {
@@ -266,98 +405,139 @@ Refs are not eagerly inlined. When an engine produces the index (section 8), eac
 }
 ```
 
-| Field    | Type        | Description                                             |
-|----------|-------------|---------------------------------------------------------|
-| `$ref`   | string      | The original address (without scheme prefix)            |
-| `url`    | string/null | The routed URL, or `null` if the target is unrouted     |
-| `title`  | string      | The resolved title of the target                        |
-
-Engines MAY offer explicit dereference operations on top of the index, but stubs are the normative wire format. This prevents infinite expansion on circular refs and keeps payloads predictable.
+| Field | Type | Description |
+|---|---|---|
+| `$ref` | string | The original address (without scheme prefix) |
+| `url` | string \| null | The routed URL, or `null` if the target is unrouted |
+| `title` | string | The resolved title of the target (per §2.3) |
 
 For refs with selectors, the stub gains a `selector` field:
 
 ```json
-{ "$ref": "globals/site", "url": null, "title": "Site config", "selector": "contact.email" }
+{ "$ref": "site", "url": null, "title": "Site config", "selector": "contact.email" }
 ```
 
-### 6.7 Circular references
+For `asset:` refs, the stub shape is:
 
-Mosaic permits circular references between records. Because refs are emitted as stubs (section 6.6), engines never expand a graph far enough to encounter a cycle. Authors do not need to avoid circular refs.
+```json
+{ "$asset": "images/hero.jpg", "alt": "...", "width": 1920, "height": 1080 }
+```
 
----
+Engines MAY add fields. Consumers MUST tolerate unknown fields.
 
-## 7. Validation
+### 5.9 Circular references
 
-A conforming engine MUST classify problems into three severity levels.
-
-### 7.1 Structural errors
-
-The site cannot be built. Examples:
-
-- `mosaic.json` is missing or malformed
-- A record has neither markdown nor JSON
-- A slug violates 3.4
-- Two records would route to the same URL
-- A page declares a `collection-list` against a non-existent collection
-- A relative ref appears in a markdown-only record
-
-Engines MUST refuse to produce an index when structural errors are present.
-
-### 7.2 Drift
-
-The site can be built but is internally inconsistent. Examples:
-
-- A field is required by the schema but missing from a record
-- A ref points to a non-existent target
-- A record contains fields not declared in the schema
-- A selector path does not resolve in the target
-
-Engines MUST produce an index when only drift is present, but MUST report drift to the caller.
-
-### 7.3 Warnings
-
-Stylistic or non-critical observations. Examples:
-
-- A record has both a markdown H1 and a JSON `title` (JSON wins, H1 is dead text)
-- An asset is in `images/` but referenced nowhere
-- A collection has no mounting page and no inbound refs
-
-### 7.4 Conflict reporting
-
-Errors and drift MUST be reported with: severity, source file, line/column if applicable, and a stable error code (e.g. `mosaic.slug.invalid`, `mosaic.ref.unresolved`). Conforming tools rely on codes; messages are informational.
+Mosaic permits cycles. Because refs are emitted as stubs, engines never expand a graph far enough to encounter a cycle. Authors need not avoid circular refs.
 
 ---
 
-## 8. The index
+## 6. Validation
+
+### 6.1 Three levels
+
+Every diagnostic MUST be one of:
+
+- **Structural.** The site cannot be built. Engines MUST refuse to produce an index.
+- **Drift.** The site can be built but is internally inconsistent. Engines MUST produce an index AND report drift.
+- **Warning.** Stylistic or non-critical. Engines produce an index. Reporting is optional but RECOMMENDED.
+
+### 6.2 Structural errors (selected)
+
+- `mosaic.config.invalid` — `mosaic.json` missing, unparseable, or schema-invalid
+- `mosaic.config.version-unsupported` — version mismatch (engine MAY refuse)
+- `mosaic.record.empty` — record has neither markdown nor JSON
+- `mosaic.slug.invalid` — slug doesn't match the regex
+- `mosaic.slug.case` — two records collide only by case
+- `mosaic.route.collision` — two pages or routing mounts claim the same URL
+- `mosaic.collection.missing` — `collection-list` references a non-existent path
+- `mosaic.relative.invalid` — relative ref in a markdown-only record
+- `mosaic.frontmatter.present` — markdown file has frontmatter
+- `mosaic.home.reserved` — `pages/home.*` exists
+- `mosaic.singleton.reserved` — declared singleton collides with reserved root name
+- `mosaic.singleton.missing` — declared singleton has no file at the root
+- `mosaic.redirect.loop` — redirects form a cycle
+- `mosaic.redirect.collision` — redirect `from` collides with a real route
+- `mosaic.ref.malformed` — ref string violates the grammar
+
+### 6.3 Drift (selected)
+
+- `mosaic.field.required` — required field missing from record (after applying title precedence per §2.3)
+- `mosaic.field.unknown` — record has a field not declared in its type
+- `mosaic.field.type-mismatch` — field value doesn't match declared type
+- `mosaic.ref.unresolved` — `ref:` or `asset:` target doesn't exist
+- `mosaic.selector.unresolved` — `@selector` doesn't resolve in the target
+
+### 6.4 Warnings (selected)
+
+- `mosaic.title.dead-h1` — markdown H1 alongside JSON `title`
+- `mosaic.asset.orphan` — asset in `images/` referenced nowhere
+- `mosaic.asset.unmanifested` — asset on disk but not in manifest
+- `mosaic.collection.unmounted` — collection has no mounting page and no inbound refs
+- `mosaic.redirect.duplicate-source` — both `mosaic.json#redirects` and `redirects` singleton exist
+
+### 6.5 Diagnostic format
+
+Each diagnostic MUST carry:
+
+| Field | Description |
+|---|---|
+| `severity` | `"structural"` \| `"drift"` \| `"warning"` |
+| `code` | Stable identifier (`mosaic.xxx.yyy`) |
+| `source` | File path relative to site root; or URL for route diagnostics |
+| `message` | Human-readable, informational |
+| `line`, `column` | Optional, where applicable |
+
+Tools rely on `code`; `message` may change between versions. Errors with `code` outside the spec's listed codes are engine extensions and MUST be prefixed (e.g. `clearcms.something`).
+
+### 6.6 Unknown-field preservation
+
+Any tool that writes a Mosaic file MUST preserve unknown fields verbatim. This applies to:
+
+- `mosaic.json` — unknown top-level keys, unknown keys inside `types`, `collections`, `singletons`
+- Record JSON — unknown fields at any nesting level
+- `images/manifest.json` — unknown fields per asset
+- Custom sections in pages — preserved as opaque objects
+
+This rule is the universal forward-compat guarantee. Without it, a tool from engine A silently strips fields engine B added, and round-tripping content through both engines becomes lossy.
+
+---
+
+## 7. The index
 
 A conforming engine produces an *index*: a derived data structure that lets consumers look up any addressable thing in O(1). The index is regenerated from sources; it is never canonical.
 
-Storage is implementation-defined. The shape is normative:
+Storage is implementation-defined. The shape is normative.
+
+### 7.1 Index shape
 
 ```json
 {
-  "mosaic_version": "0.7",
-  "site": { /* contents of mosaic.json's site field */ },
+  "mosaic_version": "0.8",
+  "site": { "name": "...", "locale": "...", "url": "..." },
   "pages": {
     "<url>": { "shape": "...", "files": {...}, "data": {...}, "body": "...", "sections": [...] }
   },
   "collections": {
     "<name>": {
-      "schema": "<type-name>",
+      "type": "<type-name>",
       "records": {
         "<slug>": { "shape": "...", "files": {...}, "data": {...}, "body": "...", "url": "<url-or-null>" }
       }
     }
   },
-  "globals": {
+  "singletons": {
     "<name>": { "shape": "...", "files": {...}, "data": {...}, "body": "..." }
   },
   "assets": {
     "<path>": { "width": 0, "height": 0, "alt": "", "mime": "..." }
   },
+  "tokens": { /* DTCG payload from the tokens singleton, if any */ },
   "routes": {
-    "<url>": { "kind": "page" | "record", "target": "..." }
+    "<url>": { "kind": "page" | "record" | "redirect", "target": "..." }
   },
+  "redirects": [
+    { "from": "/home", "to": "/", "status": 301, "source": "auto" }
+  ],
   "diagnostics": [
     { "severity": "structural"|"drift"|"warning", "code": "...", "message": "...", "source": "..." }
   ]
@@ -366,77 +546,198 @@ Storage is implementation-defined. The shape is normative:
 
 Engines MAY add fields. Consumers MUST tolerate unknown fields.
 
-### 8.1 Building the index
+### 7.2 Build algorithm
 
-The canonical resolution algorithm:
-
-1. Load `mosaic.json`. Validate schema syntax.
+1. Load `mosaic.json`. Validate against the JSON schema; collect any `mosaic.config.*` diagnostics.
 2. Index assets from `images/`. Read `images/manifest.json` if present.
-3. Index globals. Each file or folder under `globals/` becomes one entry.
+3. Index singletons. For each entry in `mosaic.json#singletons`, locate the file(s) at the root.
 4. Index collections. For each subdirectory of `collections/`, enumerate records and detect shape.
-5. Index pages. For each entry under `pages/`, detect shape and compute URL per 4.1.
-6. Build the route table. For each page, scan sections for `collection-list` entries; expand `urlPattern` against the referenced collection.
-7. Validate refs. Walk every ref in every record and confirm it resolves.
+5. Index pages. For each entry under `pages/`, detect shape and compute URL per §3.1. Apply the home rule (§3.2).
+6. Build the route table. For each page, scan sections for `collection-list` entries; expand `urlPattern` against the referenced collection. Add explicit redirects (§3.6). Add the automatic `/home → /` redirect. Detect collisions.
+7. Walk every string value in every record's JSON. For each string matching a ref prefix (§5.7), parse, resolve, and emit a stub.
 8. Emit the index.
 
-Steps 1–6 produce structure. Step 7 produces diagnostics. Step 8 serializes.
+Steps 1–6 produce structure. Step 7 produces diagnostics. Step 8 serialises.
 
 ---
 
-## 9. The `mosaic.json` schema
+## 8. The manifest schema
+
+`mosaic.json` validates against the JSON Schema 2020-12 document at [`mosaic.schema.json`](../mosaic.schema.json) in the repo root.
+
+### 8.1 Top-level
 
 ```json
 {
-  "$schema": "https://mosaic.dev/schemas/0.7.json",
-  "version": "0.7",
-  "site": {
-    "name": "string",
-    "locale": "string (BCP 47, optional)",
-    "url": "string (canonical URL, optional)"
-  },
-  "types": {
-    "<type-name>": {
-      "fields": {
-        "<field-name>": {
-          "type": "string" | "number" | "boolean" | "date" | "markdown" | "ref" | "asset" | "array" | "object",
-          "required": true,
-          "of": "<type-or-collection-name>",
-          "description": "string (optional)"
-        }
-      }
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site":        { "...identity..." },
+  "types":       { "...": { "fields": {...} } },
+  "collections": { "...": { "type": "...", "defaultSort": "...", "defaultMount": "..." } },
+  "singletons":  { "...": { "type": "..." } },
+  "redirects":   [ { "from": "...", "to": "...", "status": 301 } ],
+  "tokens":      { /* DTCG-shaped, see §10 */ }
+}
+```
+
+All top-level fields are required to be present, but each MAY be empty (`{}` or `[]`).
+
+### 8.2 `site` — identity
+
+```json
+"site": {
+  "name": "string (required)",
+  "locale": "BCP 47 tag (optional)",
+  "url": "canonical URL (optional)"
+}
+```
+
+This is **identity metadata**, used by tooling, indexers, deployment. Content for site-wide display (contact info, tagline, social handles) belongs in a `site` singleton at the root, not here. The two MAY have different `name` values.
+
+### 8.3 `types`
+
+A `type` declares a reusable record shape:
+
+```json
+"types": {
+  "TeamMember": {
+    "fields": {
+      "title":      { "type": "string", "required": true },
+      "role":       { "type": "string", "required": true },
+      "email":      { "type": "string" },
+      "photo":      { "type": "asset" },
+      "colleagues": { "type": "array", "of": { "kind": "ref", "to": "team" } },
+      "bio":        { "type": "markdown" }
     }
-  },
-  "collections": {
-    "<collection-name>": { "type": "<type-name>" }
-  },
-  "globals": {
-    "<global-name>": { "type": "<type-name>" }
   }
 }
 ```
 
-The `types` map defines reusable shapes. `collections` and `globals` bind a content location to a type. Pages do not declare types in v0.7; engines validate them against an implicit `Page` type that accepts arbitrary sections.
+Field `type` is one of: `string`, `number`, `boolean`, `date`, `markdown`, `ref`, `asset`, `array`, `object`.
+
+For `ref`, an optional `to` field scopes the ref to a collection (or `"*"` for any). For `array`, `of` accepts either a primitive type name (`"string"`, `"number"`, ...) or an object `{ "kind": "ref", "to": "<collection>" }` for arrays of refs, or `{ "kind": "object", "fields": {...} }` for arrays of inline objects.
+
+### 8.4 `collections`
+
+```json
+"collections": {
+  "news": {
+    "type": "NewsItem",
+    "defaultSort": "date desc",
+    "defaultMount": "/news"
+  }
+}
+```
+
+`defaultSort` and `defaultMount` are optional and non-normative for validation. They guide:
+
+1. `mosaic init` scaffolding (creates `pages/<defaultMount-tail>.json` with a `collection-list` using `defaultSort`).
+2. Engines that want to fall back when a page mounts the collection without overrides.
+
+Engines MAY ignore the defaults entirely.
+
+### 8.5 `singletons`
+
+```json
+"singletons": {
+  "site":      { "type": "SiteConfig" },
+  "header":    { "type": "Header" },
+  "footer":    { "type": "Footer" },
+  "tokens":    { "type": "DesignTokens" },
+  "redirects": { "type": "Redirects" }
+}
+```
+
+Each entry binds a singleton name to a type. The file at `<name>.json` / `<name>.md` at the site root MUST validate against the bound type.
+
+A singleton declared but missing from disk is `mosaic.singleton.missing` (structural).
+
+### 8.6 `redirects` (inline)
+
+See §3.6.
+
+### 8.7 `tokens` (inline)
+
+See §10. Tokens declared inline in `mosaic.json` are equivalent to tokens declared in a `tokens` singleton; the singleton wins if both exist (`mosaic.tokens.duplicate-source` warning).
 
 ---
 
-## 10. Versioning
+## 9. Versioning
 
-Mosaic follows semantic versioning at the **spec** level. The current minor (`0.7`) is permitted to break against `0.6`. Once `1.0` ships, breaking changes require a new major version.
+`mosaic.json#version` declares which spec version a site targets.
 
-`mosaic.json` MUST declare its `version` field. Engines MAY refuse to read sites whose version they do not support.
+- Same minor or lower (engine 0.8 reading site 0.7 or 0.8) → engine MUST process and SHOULD emit warning if site is older.
+- Higher minor (engine 0.8 reading site 0.9) → engine MUST attempt; unknown fields MUST be preserved (§7.6); MAY emit warning.
+- Different major → engine MAY refuse with `mosaic.config.version-unsupported`. If it processes, it MUST emit warning.
+
+Breaking changes between minor versions are permitted until 1.0. After 1.0, semver semantics.
+
+---
+
+## 10. Design tokens
+
+### 10.1 Where tokens live
+
+Design tokens are content. They live in a `tokens` singleton at the site root (`tokens.json`), declared in `mosaic.json#singletons` like any other singleton. Alternatively, small token sets MAY be declared inline in `mosaic.json#tokens`.
+
+If both exist, the singleton wins. Engines SHOULD emit `mosaic.tokens.duplicate-source` warning.
+
+### 10.2 Token shape (DTCG)
+
+The token payload conforms to the [W3C Design Tokens Community Group format](https://design-tokens.github.io/community-group/format/). Mosaic does not redefine the format; it defines only the location and addressing.
+
+Minimal example:
+
+```json
+{
+  "color": {
+    "background":   { "$value": "#ffffff", "$type": "color" },
+    "text":         { "$value": "#0a0a0a", "$type": "color" },
+    "accent":       { "$value": "#0066cc", "$type": "color" }
+  },
+  "font": {
+    "body":         { "$value": "system-ui, sans-serif", "$type": "fontFamily" },
+    "size-base":    { "$value": "16px", "$type": "dimension" }
+  }
+}
+```
+
+Engines that don't understand DTCG MUST still preserve the payload verbatim (§7.6). DTCG-aware renderers emit tokens as CSS custom properties or theme-system variables.
+
+### 10.3 Referring to tokens
+
+A token MAY be referenced from any record JSON using `ref:tokens@<path>`. The selector path uses dot notation matching the DTCG hierarchy:
+
+- `ref:tokens@color.accent` → the accent color.
+- `ref:tokens@font.body` → the body font.
+
+Engines MUST resolve these refs to the token's `$value`.
+
+### 10.4 Out of scope for tokens in 0.8
+
+The following are not in 0.8:
+
+- Per-page token overrides
+- Per-component token overrides
+- Per-record token overrides
+- Token aliases / `$ref` inside DTCG
+
+These will be addressed alongside layouts in a future MIP cluster.
 
 ---
 
 ## 11. Out of scope
 
-The following are deliberately not in the base spec:
+Deliberately not in the base spec:
 
+- Layouts (responsive grid, breakpoints, area assignment)
+- Per-page / per-component / per-record design overrides
 - Authentication, authorization, access control
 - Localization beyond the locale field
 - Drafts, revisions, workflow states
-- Hosting, deployment, CDN configuration
-- Redirects (may be addressed in a future MIP)
+- Hosting, deployment, CDN
 - Search indexes
 - Editor UI, preview, live reload
+- MDX
 
 These are engine, host, or tooling concerns. Mosaic describes content, not delivery.

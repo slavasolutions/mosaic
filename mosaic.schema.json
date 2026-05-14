@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mosaic.dev/schemas/0.8.json",
+  "title": "Mosaic manifest",
+  "description": "JSON Schema 2020-12 for mosaic.json (Mosaic spec v0.8). Static-shape validator. Cross-field constraints (redirect loops, ref scoping, required-vs-resolved-title) live in spec text and are enforced by validators.",
+  "type": "object",
+  "required": ["version", "site", "types", "collections", "singletons"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema":    { "type": "string", "format": "uri" },
+    "version":    { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+    "site":       { "$ref": "#/$defs/site" },
+    "types":      { "$ref": "#/$defs/types" },
+    "collections":{ "$ref": "#/$defs/collections" },
+    "singletons": { "$ref": "#/$defs/singletons" },
+    "redirects":  { "$ref": "#/$defs/redirects" },
+    "tokens":     { "$ref": "#/$defs/tokens" }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "site": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name":   { "type": "string", "minLength": 1 },
+        "locale": { "type": "string" },
+        "url":    { "type": "string", "format": "uri" }
+      }
+    },
+    "types": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/typeDef" },
+      "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9]*$" }
+    },
+    "typeDef": {
+      "type": "object",
+      "required": ["fields"],
+      "additionalProperties": true,
+      "properties": {
+        "description": { "type": "string" },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/fieldDef" },
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        }
+      }
+    },
+    "fieldDef": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "enum": ["string", "number", "boolean", "date", "markdown", "ref", "asset", "array", "object"]
+        },
+        "required":    { "type": "boolean" },
+        "description": { "type": "string" },
+        "to":          { "type": "string" },
+        "of":          { "$ref": "#/$defs/listItem" },
+        "fields":      {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/fieldDef" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "array" } }, "required": ["type"] },
+          "then": { "required": ["of"] }
+        }
+      ]
+    },
+    "listItem": {
+      "oneOf": [
+        { "enum": ["string", "number", "boolean", "date", "markdown", "ref", "asset"] },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": true,
+          "properties": {
+            "kind": { "enum": ["ref", "object"] },
+            "to":   { "type": "string" },
+            "fields": {
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/fieldDef" }
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "kind": { "const": "ref" } } },
+              "then": { "required": ["to"] }
+            },
+            {
+              "if": { "properties": { "kind": { "const": "object" } } },
+              "then": { "required": ["fields"] }
+            }
+          ]
+        }
+      ]
+    },
+    "collections": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/collectionDef" },
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }
+    },
+    "collectionDef": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type":         { "type": "string" },
+        "defaultSort":  { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\s+(asc|desc)$" },
+        "defaultMount": { "type": "string", "pattern": "^/[a-z0-9-/]*$" }
+      }
+    },
+    "singletons": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/singletonDef" },
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" }
+    },
+    "singletonDef": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" }
+      }
+    },
+    "redirects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/redirectRule" }
+    },
+    "redirectRule": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": true,
+      "properties": {
+        "from":   { "type": "string", "pattern": "^/" },
+        "to":     { "type": "string", "minLength": 1 },
+        "status": { "type": "integer", "enum": [301, 302, 307, 308] }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "description": "DTCG-shaped token payload. Mosaic does not constrain DTCG further; engines validate against the DTCG spec if they care."
+    }
+  }
+}
