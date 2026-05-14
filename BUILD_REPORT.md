@@ -152,6 +152,33 @@ These are small. Each is a one-line spec amendment or short MIP. None are urgent
 
 ---
 
+## clear-ucc end-to-end POC
+
+The real-world test ran end-to-end: migrate → validate → adapt → render → serve.
+
+1. **Migrated** `/home/ms/clear-ucc-ref/` (real Astro+inlang site) → `/home/ms/mosaic-clear-ucc-migrated/`. 354 files. 0 structural at migration time.
+2. **Validated** with the reference Node validator: 0 structural, 1 drift (real source-data gap: `galleries/vyshyvanka-day` missing date), 152 warnings (asset orphans — expected since stub pages have empty sections). **AFTER applying Arch-2** (URL-first walker), the validator caught two additional bugs the migrator emitted that flat-walker missed: a redirect→page collision on `/trillium-award/gallery` and a folder-vs-direct collision on `pages/about/members`. Patched both manually to test the rest of the pipeline.
+3. **Adapted** through `@mosaic/astro-adapter` in a separate Astro project at `/home/ms/mosaic-clear-ucc-astro/`. The adapter agreed with the validator on both bugs (good — independent implementations of the same spec rule). Build succeeded after the patches.
+4. **Built** 127 HTML pages in 1.17s.
+5. **Served** via `python3 -m http.server` and verified: home renders with nav + footer + DTCG tokens as CSS custom properties; `/home/` is the meta-refresh redirect to `/`; `/about/`, `/news/`, `/uk/projects/...` all return 200.
+
+**What worked:**
+- Folder shape, refs, manifest, redirects, tokens-as-CSS, deep page hierarchies, the `/home → /` lock.
+- 73 of 91 Astro redirects lifted cleanly (18 were dynamic-pattern, skipped).
+- Locale-prefixed URLs (`/uk/...`) survived migration as page records.
+- DTCG tokens propagated all the way to CSS custom properties on `<html>`.
+- The nav (33 items) was auto-extracted from inlang `nav_*` message keys.
+
+**What didn't:**
+- 21 `.astro` template pages migrated to empty stubs (`pages/<name>.json` with `sections: []`). The home page renders as title + nav + footer only. **Real content lives in Astro components, not in source files — this is the boundary of source-based migration.**
+- The migrator emitted two collisions the validator's old flat walker missed (now caught by Arch-2; user fix recommended for the migrator's collision-resolver logic).
+- Localized field maps (`{en, uk, fr}`) parked under `$astro.localized` — works but not idiomatic. Arch-1 (translatable fields) fixes this.
+
+**Migrator gaps to fix** (these are migrator bugs, not spec bugs):
+- (M1) When `pages/<name>.json` and `pages/<name>/<child>.json` both exist, collapse to `pages/<name>/index.json + pages/<name>/<child>.json` automatically. Worked for some cases (`board-of-directors`), missed `members`.
+- (M2) Don't emit a redirect rule whose `from` matches a real page URL produced by the same migration. Easy to check at write time.
+- (M3) Flatten `public/images/` → `images/` instead of preserving the nested `images/images/`.
+
 ## Where to start your review
 
 If you have 5 minutes: **`TRUTHS.md`**. Disagree with any axiom? The whole spec follows.
