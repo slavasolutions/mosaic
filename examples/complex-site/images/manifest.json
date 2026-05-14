@@ -1,0 +1,7 @@
+{
+  "logo.svg":         { "width": 220,  "height": 60,   "alt": "Glasshouse Press wordmark", "mime": "image/svg+xml" },
+  "hero-press.jpg":   { "width": 2000, "height": 1200, "alt": "The Vandercook proof press by the south window", "mime": "image/jpeg" },
+  "marcus.jpg":       { "width": 600,  "height": 600,  "alt": "Marcus Vale, editor, in front of a shelf of reference books", "mime": "image/jpeg" },
+  "sasha.jpg":        { "width": 600,  "height": 600,  "alt": "Sasha Ren at the typecase", "mime": "image/jpeg" },
+  "folio-2024.jpg":   { "width": 1600, "height": 1200, "alt": "Folio 2024, open to the title page", "mime": "image/jpeg", "caption": "Trade edition, Reed College Library" }
+}

@@ -1,0 +1,7 @@
+{
+  "title": "Marcus Vale",
+  "role": "Editor and proofreader",
+  "email": "marcus@glasshouse.example.com",
+  "photo": "asset:images/marcus.jpg",
+  "colleagues": ["ref:team/iris-okafor", "ref:team/sasha-ren"]
+}

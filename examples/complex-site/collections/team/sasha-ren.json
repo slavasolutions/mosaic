@@ -1,0 +1,6 @@
+{
+  "role": "Designer and printer",
+  "email": "sasha@glasshouse.example.com",
+  "photo": "asset:images/sasha.jpg",
+  "colleagues": ["ref:team/iris-okafor", "ref:team/marcus-vale"]
+}
