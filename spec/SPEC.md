@@ -21,7 +21,19 @@ The words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are us
 A *conforming site* is a directory that satisfies §2–§7.
 A *conforming engine* is a tool that reads a conforming site, produces an index conforming to §8, and resolves refs per §6.
 
-### 0.2 Native and embedded engines
+### 0.2 Engine namespaces
+
+Engine-specific extensions use **two** namespacing conventions, depending on what's being named.
+
+**Field names** in any JSON (records, manifest, sections, asset manifests) → prefix with `$`. Examples: `$clearcms.translations`, `$astro.localized`, `$mosaic.inferred`.
+
+- Mosaic field validation (`mosaic.field.unknown`) skips any field whose name starts with `$`.
+- The `$` namespace is reserved for engine extensions; Mosaic itself uses bare field names for normative fields, plus `$ref`, `$asset`, `$rel`, `$value`, `$type` as specifically defined in this spec.
+- This rule applies at every JSON nesting level.
+
+**Diagnostic codes** → bare dot prefix. Examples: `clearcms.engine.warning`, `astro.template.skipped`. Mosaic-defined codes are all `mosaic.*` and listed in §6.
+
+### 0.3 Native and embedded engines
 
 A conforming engine MAY:
 
@@ -161,7 +173,17 @@ Engines MUST ignore:
 
 - Files and directories whose name begins with `.` or `_`
 - The literal name `manifest.json` inside `images/`
-- The literal names `index.md` and `index.json` outside a folder-shape record
+
+A file named `index.md` or `index.json` is the folder-shape content of its parent directory (§2.2). At the top of `pages/`, `index.{md,json}` is the home record (§3.2). The folder-shape rule always claims it; engines never "ignore" an index file.
+
+### 2.7 Body and sections
+
+When a record has both a markdown body and a `sections` array in its JSON:
+
+1. The `sections` array MUST own visible rendering. The body is a default text source that sections MAY reference via `ref:` or `./` to surface its content.
+2. Engines MUST NOT render the body as a separate block alongside sections.
+3. To include the body inside the section flow explicitly, add a `{ "type": "prose", "from": "./<filename>.md" }` section.
+4. If `sections` is absent or empty, the body is rendered directly.
 
 ---
 
@@ -169,7 +191,9 @@ Engines MUST ignore:
 
 ### 3.1 Page routes
 
-A page at `pages/<path>` is routed at URL `/<path>`, with these transformations:
+A page at `pages/<path>` is routed at URL `/<path>`. Paths may be **arbitrarily deep**; each path segment is a slug per §2.5.
+
+Transformations:
 
 - Trailing `/index.md` or `/index.json` is stripped.
 - A `.md` or `.json` extension is stripped.
@@ -181,6 +205,14 @@ A page at `pages/<path>` is routed at URL `/<path>`, with these transformations:
 | `pages/about.md` | `/about` |
 | `pages/services.json` | `/services` |
 | `pages/annual-report-2024/index.json` | `/annual-report-2024` |
+| `pages/archive/2024/winter.json` | `/archive/2024/winter` |
+| `pages/about/team.md` | `/about/team` |
+| `pages/about/team/index.md` | `/about/team` (folder shape) |
+| `pages/about/team/history.md` | `/about/team/history` |
+
+Every page resolves to **exactly one URL**. Shape (direct vs folder) is a storage choice, not a routing concept. A directory under `pages/` with no `index.{md,json}` and no nested page records is ignored — it isn't a record, just a URL-prefix container.
+
+A folder shape (`pages/<dir>/index.*`) and a direct sibling at the same URL (`pages/<dir>.{md,json}`) MUST be reported as `mosaic.route.collision` (structural).
 
 ### 3.2 Home is `/`
 
@@ -192,7 +224,7 @@ This prevents the common error where authors create both `pages/index` and `page
 
 ### 3.3 Collection routes via `collection-list`
 
-A page declares routing for a collection by including a `collection-list` section in its JSON:
+A page declares routing for a collection by including a `collection-list` section in its JSON. The section's `from` MUST be `"collections/<name>"` without a trailing slash. Engines SHOULD normalize a trailing slash if present; strict tools MAY treat it as `mosaic.collection.missing`.
 
 ```json
 {
@@ -349,7 +381,7 @@ A singleton named `team` and a collection named `team` MAY coexist. `ref:team` r
 
 Inside `collections/news/2025-05-15-recap/index.json`, `"./hero.jpg"` resolves to `collections/news/2025-05-15-recap/hero.jpg`.
 
-A relative ref in a markdown-only record has no defined "here" — engines MUST report it as `mosaic.relative.invalid` (structural).
+Relative refs are JSON-only by construction (refs are detected as JSON string values, §5.7). A markdown-only record has no JSON channel, so the case is impossible on conforming sites. `mosaic.relative.invalid` is reserved for any future case where a relative ref appears without a defined anchor — engines should not encounter it in normal use.
 
 ### 5.6 Selectors
 
@@ -378,6 +410,8 @@ Example: `## Where the name comes from` → `where-the-name-comes-from`. The sel
 1. Try the JSON path. If it resolves, use it.
 2. Otherwise, try the markdown heading. If it resolves, use it.
 3. Otherwise, `mosaic.selector.unresolved` (drift).
+
+Selectors MAY target any JSON value — scalar, object, or array. Consumers decide how to render non-scalar targets. Engines MAY emit `mosaic.selector.non-scalar` as an OPTIONAL informational warning when a selector resolves to an array or object; this is non-normative.
 
 Selectors MAY appear on `ref:` and `./` forms. They MUST NOT appear on `asset:` forms — assets are opaque.
 
@@ -422,6 +456,14 @@ For `asset:` refs, the stub shape is:
 ```json
 { "$asset": "images/hero.jpg", "alt": "...", "width": 1920, "height": 1080 }
 ```
+
+For `./` (relative) refs, the stub shape mirrors `ref:` but uses `$rel` instead of `$ref`:
+
+```json
+{ "$rel": "./hero.jpg", "url": "/news/2025-05-15-recap/hero.jpg", "title": "" }
+```
+
+If a `./` path points at an asset, engines MAY use the `$asset` shape instead. If it points at a markdown section, the stub MAY carry the resolved heading content per §5.6.
 
 Engines MAY add fields. Consumers MUST tolerate unknown fields.
 
@@ -510,12 +552,26 @@ Storage is implementation-defined. The shape is normative.
 
 ### 7.1 Index shape
 
+Per-record fields:
+
+| Field | Type | Required | Meaning |
+|---|---|---|---|
+| `shape` | enum | yes | `"direct"` (single file or sidecar pair) or `"folder"` (directory with `index.*`) |
+| `files` | object | yes | `{ "md": "<path>"?, "json": "<path>"? }` — paths relative to site root |
+| `data` | object | when JSON present | parsed JSON content |
+| `body` | string | when markdown present | raw markdown text |
+| `sections` | array | optional | extracted from `data.sections` for pages |
+| `url` | string \| null | yes for routed records | the spec's computed URL per §3 |
+| `title` | string | yes | resolved title per §2.3 |
+
+URL keys in `pages`, `collections.records`, and `routes` are the **spec's computed URLs** per §3. Embedded engines that rewrite URLs (host-framework subpath mounting, locale prefixes, etc.) MUST apply the rewrite in their adapter layer, not by mutating the index. This keeps the index portable across hosts.
+
 ```json
 {
   "mosaic_version": "0.8",
   "site": { "name": "...", "locale": "...", "url": "..." },
   "pages": {
-    "<url>": { "shape": "...", "files": {...}, "data": {...}, "body": "...", "sections": [...] }
+    "<url>": { "shape": "direct" | "folder", "files": {...}, "data": {...}, "body": "...", "sections": [...], "title": "..." }
   },
   "collections": {
     "<name>": {
