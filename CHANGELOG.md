@@ -1,6 +1,38 @@
 # Changelog
 
-## 0.8.1 — 2026-05-14
+## 0.9 — Realignment (2026-05-14)
+
+Doc-layer realignment after drift accumulated through 0.8 → 0.8.1. No semantic spec changes; terminology renames (`record → entry`, `drift`, `tools → packages`) deferred to 0.10. Locks 1.0 scope.
+
+### Doc structure overhaul
+
+- `TRUTHS.md` renamed to `PHILOSOPHY.md`; rewritten as 10 hybrid-format truths (down from 17).
+- `SPEC.md` hoisted out of `spec/` subdir to repo root. Single file, no subdir split.
+- `OVERVIEW.md` folded into `README.md`.
+- `ARCHITECTURE.md`, `BUILD_REPORT.md`, original `TRUTHS.md`, original `spec/SPEC.md` moved to `archive/0.8.1/`.
+- `mips/` keeps its name; adopts the Rust RFC template going forward (Summary / Motivation / Guide / Reference / Drawbacks / Rationale & alternatives / Prior art / Unresolved / Future).
+
+### Process additions
+
+- `CONTRIBUTING.md` added with the session-equals-version-step rule: each non-discarded Claude session is exactly one CHANGELOG entry and one version step.
+- `AGENTS.md` added mirroring the versioning rule for AI sessions.
+- `CHANGELOG.md` reconstructed back to 0.0 (pre-0.7 entries are author-memory placeholders; see "Prior history" below).
+- `V1.md` added — locks the 1.0 scope: 4 packages, `mosaic-explorer` separate-repo binary distribution, dogfood website, conformance 100%.
+
+### Architecture
+
+- Studio architecture decoupled from CLI; explorer ships as a separate `mosaic-explorer` repo with its own release cadence.
+- Three-layer source-of-truth strictly separated: PHILOSOPHY (claims) / SPEC (rules) / MIPs (decisions).
+
+### Deferred to 0.10
+
+- `record → entry` rename (whole spec + tools + tests sweep).
+- `drift` severity rename (`inconsistency` vs collapse into `warning` — pending).
+- `tools/ → packages/` directory rename.
+
+---
+
+## 0.8.1 — First-class locales (2026-05-14)
 
 Promotes localization out of engine extensions into the base spec.
 
@@ -27,9 +59,13 @@ Promotes localization out of engine extensions into the base spec.
 - `033-translatable-field-pass` — translatable field resolved against `defaultLocale`.
 - `034-locale-suffix-record-pass` — `<slug>.<locale>.md` sibling files surface as separate locale variants.
 
+### Late-window addition
+
+- `@mosaic/core` extracted (commit `fa42abb`): shared SDK at `tools/core/` (~2100 LOC, zero deps, 48-assertion self-test). The three duplicated impls (validate, render, astro-loader) now delegate to core. Net −1395 LOC across the repo.
+
 ---
 
-## 0.8 — 2026-05-14 (draft)
+## 0.8 — Folder-shape foundations (2026-05-14)
 
 Closes the interop holes left in 0.7 and adds the three features 0.7 deferred. No more "globals/" folder; `mosaic.json` becomes a real manifest; design tokens, redirects, and a home-route lock are first-class.
 
@@ -98,7 +134,7 @@ The 17 axioms in [`TRUTHS.md`](TRUTHS.md) are the foundation. Every rule in the 
 
 ---
 
-## 0.7 — 2026-05-14 (draft, superseded by 0.8)
+## 0.7 — First public draft (2026-05-14)
 
 First public draft. Shape settling toward 1.0.
 
@@ -110,3 +146,27 @@ First public draft. Shape settling toward 1.0.
 - **MIP-0004** — Stub-based ref expansion
 - **MIP-0005** — Three-level validation severity (structural / drift / warning)
 - **MIP-0006** — List-only mounts via `"routes": false`
+
+---
+
+## 0.5 — Name landed: Mosaic (approx 2026-04)
+
+_TODO: user-provided summary. Bucket idea landed at the name "Mosaic" with first stable folder-shape conventions._
+
+---
+
+## 0.1–0.4 — Bucket revisions (approx 2026-02 to 2026-04)
+
+_TODO: user-provided summary. Revisions of the "bucket" protocol idea before the rename._
+
+---
+
+## 0.0 — Bucket (approx 2026-01)
+
+_TODO: user-provided summary. Original "website in a bucket" protocol sketch. Pre-Mosaic._
+
+---
+
+## Prior history (0.0–0.5, unrecorded in this repo)
+
+Pre-0.7 versions lived in a different working tree and are not git-recoverable from this repo. Approximate dates come from author memory; one-liners above are placeholders pending fill-in by the author. The proper CHANGELOG starts at 0.7 (the imported baseline at commit `c621430`) and runs forward from there in git.
