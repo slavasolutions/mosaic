@@ -18,6 +18,27 @@ function titleCase(slug) {
     .trim();
 }
 
+// Normalize a date-like value (ISO string, JS Date, or human-readable like
+// "Jul 08 2022") to YYYY-MM-DD. If parsing fails, return the input unchanged
+// (caller may surface drift later). Replaces the older naive slice(0,10)
+// that silently corrupted non-ISO strings (the Astro starter blog convention).
+function normalizeDate(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  if (typeof v === "string") {
+    // Already an ISO date prefix? Fast path.
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(v);
+    if (m) return m[1];
+    // Try parsing as a JS Date.
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  // Unparseable — return the raw value as a string so the validator can
+  // surface a type-mismatch instead of silently corrupting.
+  return String(v);
+}
+
 function lowerSlug(s) {
   return String(s || "")
     .toLowerCase()
@@ -87,8 +108,8 @@ function inferTypeFields(records, baseLocale = "en") {
       // Mirror the writer's normalization so the inferred type matches output:
       // publishedAt -> date, pubDate -> date, drop lang/locale/slug.
       const fm = Object.assign({}, parsed.frontmatter);
-      if (fm.publishedAt && !fm.date) fm.date = String(fm.publishedAt).slice(0, 10);
-      if (fm.pubDate && !fm.date) fm.date = String(fm.pubDate).slice(0, 10);
+      if (fm.publishedAt && !fm.date) fm.date = normalizeDate(fm.publishedAt);
+      if (fm.pubDate && !fm.date) fm.date = normalizeDate(fm.pubDate);
       delete fm.publishedAt; delete fm.pubDate;
       delete fm.slug; delete fm.lang; delete fm.locale;
       sampleObject(fm);

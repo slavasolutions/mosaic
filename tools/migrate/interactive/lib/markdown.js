@@ -1,5 +1,22 @@
 "use strict";
 
+// Normalize a date-like value (ISO string, JS Date, or human-readable like
+// "Jul 08 2022") to YYYY-MM-DD. If parsing fails, return the input unchanged.
+// Matches the helper in plan.js — kept inline here to keep this module
+// stand-alone (markdown.js is also used by external callers).
+function normalizeDate(v) {
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  if (typeof v === "string") {
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(v);
+    if (m) return m[1];
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  return String(v);
+}
+
 // Frontmatter parser + sidecar split.
 // Hand-rolled YAML lite — handles the cases we see in Astro markdown:
 //   key: value
@@ -210,12 +227,12 @@ function splitFrontmatterToSidecar(frontmatter, body, opts = {}) {
   // Normalize Astro date keys onto `date`. Keep originals out of the record
   // (they survive under $astro for the engine).
   if (fm.publishedAt && !json.date) {
-    json.date = String(fm.publishedAt).slice(0, 10);
+    json.date = normalizeDate(fm.publishedAt);
     delete json.publishedAt;
     astroExtras.publishedAt = fm.publishedAt;
   }
   if (fm.pubDate && !json.date) {
-    json.date = String(fm.pubDate).slice(0, 10);
+    json.date = normalizeDate(fm.pubDate);
     delete json.pubDate;
     astroExtras.pubDate = fm.pubDate;
   }

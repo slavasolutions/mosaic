@@ -163,15 +163,20 @@ Frontmatter (YAML, TOML, or otherwise) is forbidden. Conforming engines MUST NOT
 
 ### 2.5 Slug rules
 
-Slugs MUST match `^[a-z0-9][a-z0-9-]*$`.
+Slugs MUST match `^[a-z0-9][a-z0-9-]*$`. This applies uniformly to:
 
-Filename matching is case-sensitive on disk. Engines MUST treat slugs as case-insensitive for ref lookup and route minting. Two records whose slugs differ only in case are a conflict (`mosaic.slug.case`).
+- filename stems for direct records (`pages/about.md` → slug `about`)
+- directory names for folder-shape records
+- slug segments inside `ref:` addresses (a malformed-case slug in a ref is `mosaic.ref.malformed`, structural)
+
+Filename matching is case-sensitive on disk. The case-insensitivity rule applies only to **detecting collisions**: two records whose slugs differ only in case (e.g. `Anna.json` + `anna.json`) are a structural conflict (`mosaic.slug.case`). Refs themselves use the lowercase form.
 
 ### 2.6 Reserved names within records
 
-Engines MUST ignore:
+Engines MUST ignore the following anywhere inside `pages/` and `collections/`:
 
 - Files and directories whose name begins with `.` or `_`
+- The literal names `README.md`, `LICENSE`, `CHANGELOG.md`, `CONTRIBUTING.md`, `AGENTS.md`, `NOTES.md` (use for in-tree documentation; never become records)
 - The literal name `manifest.json` inside `images/`
 
 A file named `index.md` or `index.json` is the folder-shape content of its parent directory (§2.2). At the top of `pages/`, `index.{md,json}` is the home record (§3.2). The folder-shape rule always claims it; engines never "ignore" an index file.
@@ -224,7 +229,7 @@ This prevents the common error where authors create both `pages/index` and `page
 
 ### 3.3 Collection routes via `collection-list`
 
-A page declares routing for a collection by including a `collection-list` section in its JSON. The section's `from` MUST be `"collections/<name>"` without a trailing slash. Engines SHOULD normalize a trailing slash if present; strict tools MAY treat it as `mosaic.collection.missing`.
+A page declares routing for a collection by including a `collection-list` section in its JSON. The section's `from` MUST be `"collections/<name>"`. Engines MUST normalize a trailing slash (if `from` ends with `/`, strip it) and emit `mosaic.collection.from-trailing-slash` (warning) for authoring feedback. After normalization, the value MUST point at an existing collection or `mosaic.collection.missing` fires (structural).
 
 ```json
 {
@@ -288,14 +293,14 @@ Redirects are declared in `mosaic.json#redirects` as an array:
 
 Engines MUST:
 
-- Add one entry per redirect to the route table with `kind: "redirect"`.
-- Add the automatic `/home → /` redirect (§3.2).
-- Detect redirect loops (`A → B → A`) and report as structural (`mosaic.redirect.loop`).
-- Detect a redirect `from` that collides with a real route and report as structural (`mosaic.redirect.collision`).
+- Add one entry per redirect to the route table with `kind: "redirect"` (per the array shape in §7.1).
+- Add the automatic `/home → /` redirect (§3.2). The auto-entry MUST appear in BOTH `index.redirects` (with `source: "auto"`, full `from`/`to`/`status`) AND `index.routes` (as a route-table entry with `kind: "redirect"`).
+- Detect redirect loops (`A → B → A`, any length, including self-loops) and report as a single `mosaic.redirect.loop` per cycle.
+- Detect a redirect `from` that collides with a real page or record route (i.e. an entry whose `kind` is `page` or `record`) and report as `mosaic.redirect.collision`. Redirect-redirect overlap is NOT a collision; the later rule is ignored and `mosaic.redirect.duplicate-from` (warning) is emitted.
 
 Native engines apply redirects server-side via HTTP status responses. Embedded engines surface the redirect table to the host framework's routing layer. Wireframe renderers MAY emit `<meta http-equiv="refresh">` placeholders.
 
-Redirects MAY also live in a `redirects` singleton at the root (`redirects.json` with a `rules` array of the same shape). If both `mosaic.json#redirects` and a `redirects` singleton exist, the singleton wins, and engines SHOULD emit `mosaic.redirect.duplicate-source` warning.
+Redirects MAY also live in a `redirects` singleton at the root: `redirects.json` MUST be a JSON object with exactly one required key `rules`, whose value is an array of redirect rules of the same shape as the inline form above. A singleton with the wrong shape is `mosaic.field.type-mismatch` (drift). If both `mosaic.json#redirects` and a `redirects` singleton exist, the singleton wins, and engines SHOULD emit `mosaic.redirect.duplicate-source` warning.
 
 ### 3.7 Unrouted collections
 
@@ -307,7 +312,18 @@ A collection MAY exist without any page mounting it. Its records are addressable
 
 A page's JSON MAY include a `sections` array. Each section is an object with a `type` field.
 
-### 4.1 `collection-list` (normative)
+### 4.1 `prose` (normative)
+
+Inlines a markdown record's body (or any markdown file co-located with the JSON) into the page's section flow. Lets a single record contain both a body and structured sections without duplication (per §2.7).
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | string | yes | Literal `"prose"` |
+| `from` | string | yes | A `./`-prefixed path to a markdown file relative to the JSON containing this section. The target's body is rendered in-place. |
+
+The `from` value MAY include an `@selector` to target a heading section (§5.6) rather than the whole body.
+
+### 4.2 `collection-list` (normative)
 
 The only section type with normative behavior.
 
@@ -323,7 +339,7 @@ The only section type with normative behavior.
 
 Default sort: if the collection's records have a `date` field, default to `date desc`. Otherwise, default to filesystem order. When the sort key produces ties, engines MUST break ties by slug ascending — this guarantees deterministic output across engines.
 
-### 4.2 Custom sections
+### 4.3 Custom sections
 
 All other section types are engine-defined. Engines MUST preserve unknown section types verbatim in the index so other consumers can interpret them. This is a specific case of the universal preservation rule (§7.6).
 
@@ -393,7 +409,7 @@ A ref MAY include an `@selector` to address a sub-part of the resolved record.
 - Array index: `ref:header@nav.0.label` → the `label` of the first nav item. Zero-based, integer-only.
 - Nested mix: `ref:site@social.platforms.2.url`.
 
-Each segment MUST match `[a-z0-9_-]+` for object keys, or be a non-negative integer for array indices.
+Each segment MUST match `[A-Za-z0-9_-]+` for object keys (object keys are case-sensitive; DTCG camelCase like `fontFamily` is valid), or be a non-negative integer for array indices.
 
 **Markdown heading selectors** target a section of prose. The selector is the heading slug, computed as:
 
@@ -492,7 +508,7 @@ Every diagnostic MUST be one of:
 - `mosaic.slug.case` — two records collide only by case
 - `mosaic.route.collision` — two pages or routing mounts claim the same URL
 - `mosaic.collection.missing` — `collection-list` references a non-existent path
-- `mosaic.relative.invalid` — relative ref in a markdown-only record
+- `mosaic.relative.invalid` — reserved (see §5.5); relative refs in conforming sites are JSON-only so this code does not fire in normal authoring. Engines MAY use it for non-conforming hand-edited cases.
 - `mosaic.frontmatter.present` — markdown file has frontmatter
 - `mosaic.home.reserved` — `pages/home.*` exists
 - `mosaic.singleton.reserved` — declared singleton collides with reserved root name
@@ -564,7 +580,13 @@ Per-record fields:
 | `url` | string \| null | yes for routed records | the spec's computed URL per §3 |
 | `title` | string | yes | resolved title per §2.3 |
 
-URL keys in `pages`, `collections.records`, and `routes` are the **spec's computed URLs** per §3. Embedded engines that rewrite URLs (host-framework subpath mounting, locale prefixes, etc.) MUST apply the rewrite in their adapter layer, not by mutating the index. This keeps the index portable across hosts.
+URL keys in `pages` and `collections.records` are the **spec's computed URLs** per §3. The `routes` field is an **array** of route entries (each with `url`, `kind`, and `target`) — ordered for deterministic iteration; engines MAY also expose a URL-keyed lookup map as an engine extension. Embedded engines that rewrite URLs (host-framework subpath mounting, locale prefixes, etc.) MUST apply the rewrite in their adapter layer, not by mutating the index. This keeps the index portable across hosts.
+
+**Index invariants:**
+- Every entry in `routes` whose `kind` is `"page"` MUST have a matching entry in `pages` at the same URL.
+- Every `kind: "record"` route MUST have a matching `collections.<name>.records.<slug>` whose `url` equals the route URL.
+- Every `kind: "redirect"` route MUST correspond to an entry in `redirects` (or be the auto `/home → /` entry).
+- `target` semantics: for `page`/`record`, it is the index-path of the source record (e.g. `pages/about` or `collections/news/2025-launch`). For `redirect`, it is the `to` URL.
 
 ```json
 {
@@ -588,9 +610,9 @@ URL keys in `pages`, `collections.records`, and `routes` are the **spec's comput
     "<path>": { "width": 0, "height": 0, "alt": "", "mime": "..." }
   },
   "tokens": { /* DTCG payload from the tokens singleton, if any */ },
-  "routes": {
-    "<url>": { "kind": "page" | "record" | "redirect", "target": "..." }
-  },
+  "routes": [
+    { "url": "<url>", "kind": "page" | "record" | "redirect", "target": "..." }
+  ],
   "redirects": [
     { "from": "/home", "to": "/", "status": 301, "source": "auto" }
   ],
@@ -672,6 +694,10 @@ A `type` declares a reusable record shape:
 Field `type` is one of: `string`, `number`, `boolean`, `date`, `markdown`, `ref`, `asset`, `array`, `object`.
 
 For `ref`, an optional `to` field scopes the ref to a collection (or `"*"` for any). For `array`, `of` accepts either a primitive type name (`"string"`, `"number"`, ...) or an object `{ "kind": "ref", "to": "<collection>" }` for arrays of refs, or `{ "kind": "object", "fields": {...} }` for arrays of inline objects.
+
+For `object`:
+- An `object` field with declared `fields` validates its children recursively (each declared sub-field with its own type + required-ness; undeclared keys trigger `mosaic.field.unknown` drift).
+- An `object` field with **no `fields`** declared is **free-form**: any sub-key/sub-value is accepted, no drift fires. This is the field-level mirror of §8.3.1's type-level escape hatch — useful when wrapping opaque blobs like a `contact` map or a `metadata` bag.
 
 #### 8.3.1 Free-form types (escape hatch)
 
