@@ -1,6 +1,6 @@
 # Astro → Mosaic migration
 
-Step-by-step for converting an Astro site (especially one using Content Collections) into Mosaic 0.7 shape.
+Step-by-step for converting an Astro site (especially one using Content Collections) into Mosaic 0.8 shape.
 
 ## Before you start
 
@@ -17,9 +17,10 @@ mosaic-site/
 ├── mosaic.json     (will be generated in step 4)
 ├── pages/
 ├── collections/
-├── globals/
 └── images/
 ```
+
+(Singletons such as `site.json`, `header.json`, `footer.json` live at the **site root**, not in a `globals/` directory — per MIP-0007.)
 
 ## Step 2 — Move pages
 
@@ -73,17 +74,17 @@ For each `defineCollection({ schema: z.object({ ... }) })`:
 
 Alternatively, skip the manual translation: run `mosaic infer` after step 3 and let it generate a draft, then hand-edit to match what Zod said.
 
-## Step 5 — Convert globals
+## Step 5 — Convert singletons
 
-Astro sites typically don't have a formal "globals" concept; site-wide data is usually in:
+Astro sites typically don't have a formal "singletons" concept; site-wide data is usually in:
 
 - A config file (`src/config.ts`, `astro.config.mjs`'s `site`)
 - A layout component
 - Sometimes a single content entry like `src/content/site/info.md`
 
-For each piece of site-wide data, write it to `globals/<name>.json`. Common globals: `site.json`, `header.json`, `footer.json`.
+For each piece of site-wide data, write it as `<name>.json` at the example root. Common singletons: `site.json`, `header.json`, `footer.json`. Each must also be declared in `mosaic.json#singletons` and bound to a type.
 
-Move any Astro layout that references site-wide data so its references become `ref:globals/site@<field>` in Mosaic.
+Move any Astro layout that references site-wide data so its references become `ref:site@<field>` in Mosaic (no `globals/` prefix — singletons are addressed by bare name; the first-`/` rule disambiguates them from collections).
 
 ## Step 6 — Move assets
 
@@ -126,6 +127,8 @@ Run `mosaic index --site mosaic-site/ --out -` and compare the route table to As
 ## Common gotchas
 
 - **`title` in frontmatter and `# Title` in markdown.** Both Astro and Mosaic prefer the frontmatter/JSON title. Mosaic flags the dead H1 as a warning. Just drop one.
-- **MDX components.** Mosaic 0.7 doesn't support them. Either convert to plain markdown or render to HTML and store the result.
+- **MDX components.** Mosaic doesn't support them. Either convert to plain markdown or render to HTML and store the result.
 - **Slug case.** Astro tolerates `MyPost.md`; Mosaic requires lowercase. Rename during migration.
-- **Date-prefixed slugs.** Astro often uses `2024-01-15-post.md`. Mosaic 0.7 does not parse dates from filenames (per MIP); make sure `date` is in the JSON sidecar.
+- **Date-prefixed slugs.** Astro often uses `2024-01-15-post.md`. Mosaic does not parse dates from filenames; put the `date` in the JSON sidecar.
+- **`redirect_from` in frontmatter.** Some Astro setups (and migrators from Jekyll/Hugo) carry per-page `redirect_from` arrays. Lift these into `mosaic.json#redirects` as `{ "from": "<old>", "to": "<new>", "status": 301 }` entries.
+- **`pages/home.*`.** Reserved in 0.8. If the source has both `pages/index` and `pages/home`, fold `home` into `index` (or rename to a non-reserved slug). Engines auto-redirect `/home → /` regardless.

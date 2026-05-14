@@ -87,7 +87,9 @@ The 0.8 release closes the interop holes from 0.7 and adds the three things 0.7 
 
 ## Where to look next
 
-- **[`TRUTHS.md`](./TRUTHS.md)** — the 17 axioms everything else derives from. Read this first.
+- **[`OVERVIEW.md`](./OVERVIEW.md)** — the one-page guided tour. Read this first if you've never used Mosaic.
+- **[`TRUTHS.md`](./TRUTHS.md)** — the 17 axioms everything else derives from. Read this second.
+- **[`docs/showcase.html`](./docs/showcase.html)** — visual showcase, open in any browser. For showing other people what Mosaic is.
 - **[`examples/`](./examples/)** — three example sites you can read end-to-end.
 - **[`spec/SPEC.md`](./spec/SPEC.md)** — the precise rules. For implementers.
 - **[`mosaic.schema.json`](./mosaic.schema.json)** — JSON Schema 2020-12 validator for `mosaic.json`.

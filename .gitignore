@@ -9,6 +9,13 @@ node_modules/
 index.json
 index.db
 
+# Renderer output
+out/
+dist/
+
+# Astro
+.astro/
+
 # Editor
 .vscode/
 .idea/

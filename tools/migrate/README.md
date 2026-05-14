@@ -42,7 +42,7 @@ See `astro/README.md` for the full guide. Quick summary:
 
 ## Frontmatter conversion
 
-Astro stores structured fields in YAML frontmatter; Mosaic forbids frontmatter (SPEC §3.3). For each source markdown file:
+Astro stores structured fields in YAML frontmatter; Mosaic forbids frontmatter (SPEC §2.4). For each source markdown file:
 
 1. Parse the frontmatter.
 2. Write a JSON sidecar with the parsed fields.

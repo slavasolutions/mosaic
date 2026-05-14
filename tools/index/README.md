@@ -18,7 +18,7 @@ mosaic index [--site <path>] [--out <path>] [--format json|sqlite]
 ## Formats
 
 - `--format json` (default): single JSON document conforming to SPEC §8.
-- `--format sqlite`: a SQLite database with one table per top-level key (`pages`, `collections`, `globals`, `routes`, `assets`, `diagnostics`). Schema documented separately.
+- `--format sqlite`: a SQLite database with one table per top-level key (`pages`, `collections`, `singletons`, `routes`, `redirects`, `assets`, `tokens`, `diagnostics`). Schema documented separately.
 
 ## Output destinations
 
