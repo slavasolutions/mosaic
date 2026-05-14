@@ -1,0 +1,15 @@
+{
+  "title": "Events",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "Upcoming events"
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/events",
+      "sort": "date asc",
+      "limit": 20
+    }
+  ]
+}

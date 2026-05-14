@@ -1,0 +1,14 @@
+{
+  "version": "0.7",
+  "site": { "name": "Multi-mount" },
+  "types": {
+    "NewsItem": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "date": { "type": "date", "required": true }
+      }
+    }
+  },
+  "collections": { "news": { "type": "NewsItem" } },
+  "globals": {}
+}

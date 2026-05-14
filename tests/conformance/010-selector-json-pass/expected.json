@@ -1,0 +1,5 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "notes": "ref:globals/site@contact.email resolves to 'hello@example.com'"
+}

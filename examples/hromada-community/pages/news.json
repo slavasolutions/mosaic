@@ -1,0 +1,16 @@
+{
+  "title": "News",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "News from Hromada",
+      "lede": "Updates, recaps, and what's coming up."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/news",
+      "sort": "date desc",
+      "limit": 20
+    }
+  ]
+}

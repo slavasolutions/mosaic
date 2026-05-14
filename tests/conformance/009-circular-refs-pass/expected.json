@@ -1,0 +1,5 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "notes": "Both refs resolve to stubs (SPEC §6.6). Circular references are permitted and not flagged."
+}

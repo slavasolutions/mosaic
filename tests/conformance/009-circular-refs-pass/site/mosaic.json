@@ -1,0 +1,14 @@
+{
+  "version": "0.7",
+  "site": { "name": "Circular" },
+  "types": {
+    "Person": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "partner": { "type": "ref" }
+      }
+    }
+  },
+  "collections": { "team": { "type": "Person" } },
+  "globals": {}
+}

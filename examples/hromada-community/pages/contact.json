@@ -1,0 +1,20 @@
+{
+  "title": "Contact",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "Get in touch"
+    },
+    {
+      "type": "contact-block",
+      "email": "ref:globals/site@contact.email",
+      "phone": "ref:globals/site@contact.phone",
+      "address": "ref:globals/site@contact.address"
+    },
+    {
+      "type": "form",
+      "fields": ["name", "email", "message"],
+      "submitTo": "ref:globals/site@contact.email"
+    }
+  ]
+}

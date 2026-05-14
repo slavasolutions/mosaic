@@ -1,0 +1,7 @@
+{
+  "logo.svg":            { "width": 200, "height": 60,   "alt": "Hromada Community", "mime": "image/svg+xml" },
+  "hero.jpg":            { "width": 1920, "height": 1080, "alt": "Community gathering at the spring festival", "mime": "image/jpeg" },
+  "icon-settlement.svg": { "width": 48,   "height": 48,   "alt": "", "mime": "image/svg+xml" },
+  "icon-language.svg":   { "width": 48,   "height": 48,   "alt": "", "mime": "image/svg+xml" },
+  "icon-culture.svg":    { "width": 48,   "height": 48,   "alt": "", "mime": "image/svg+xml" }
+}

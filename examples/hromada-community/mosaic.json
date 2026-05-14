@@ -1,0 +1,76 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.7.json",
+  "version": "0.7",
+  "site": {
+    "name": "Hromada Community",
+    "locale": "en-CA",
+    "url": "https://hromada.example.org"
+  },
+  "types": {
+    "NewsItem": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "date": { "type": "date", "required": true },
+        "summary": { "type": "string" },
+        "hero": { "type": "asset" },
+        "body": { "type": "markdown" }
+      }
+    },
+    "TeamMember": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "role": { "type": "string", "required": true },
+        "email": { "type": "string" },
+        "photo": { "type": "asset" },
+        "colleagues": { "type": "array", "of": "ref" },
+        "bio": { "type": "markdown" }
+      }
+    },
+    "Service": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "summary": { "type": "string", "required": true },
+        "icon": { "type": "asset" },
+        "body": { "type": "markdown" }
+      }
+    },
+    "Event": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "date": { "type": "date", "required": true },
+        "location": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "SiteConfig": {
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "tagline": { "type": "string" },
+        "contact": { "type": "object" }
+      }
+    },
+    "Header": {
+      "fields": {
+        "logo": { "type": "asset" },
+        "nav": { "type": "array" }
+      }
+    },
+    "Footer": {
+      "fields": {
+        "copyright": { "type": "string" },
+        "links": { "type": "array" }
+      }
+    }
+  },
+  "collections": {
+    "news": { "type": "NewsItem" },
+    "team": { "type": "TeamMember" },
+    "services": { "type": "Service" },
+    "events": { "type": "Event" }
+  },
+  "globals": {
+    "site": { "type": "SiteConfig" },
+    "header": { "type": "Header" },
+    "footer": { "type": "Footer" }
+  }
+}

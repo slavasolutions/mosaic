@@ -1,0 +1,9 @@
+{
+  "version": "0.7",
+  "site": { "name": "Selector JSON" },
+  "types": {
+    "SiteConfig": { "fields": { "contact": { "type": "object" } } }
+  },
+  "collections": {},
+  "globals": { "site": { "type": "SiteConfig" } }
+}

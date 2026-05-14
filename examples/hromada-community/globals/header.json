@@ -1,0 +1,11 @@
+{
+  "logo": "asset:images/logo.svg",
+  "nav": [
+    { "label": "About", "url": "/about" },
+    { "label": "Services", "url": "/services" },
+    { "label": "News", "url": "/news" },
+    { "label": "Team", "url": "/team" },
+    { "label": "Events", "url": "/events" },
+    { "label": "Contact", "url": "/contact" }
+  ]
+}

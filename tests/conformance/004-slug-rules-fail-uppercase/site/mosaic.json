@@ -1,0 +1,7 @@
+{
+  "version": "0.7",
+  "site": { "name": "Slug Test" },
+  "types": { "Thing": { "fields": { "title": { "type": "string", "required": true } } } },
+  "collections": { "things": { "type": "Thing" } },
+  "globals": {}
+}

@@ -1,0 +1,6 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 1 },
+  "diagnostics": [
+    { "severity": "warning", "code": "mosaic.asset.orphan", "source": "images/orphan.svg" }
+  ]
+}

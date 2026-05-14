@@ -1,0 +1,7 @@
+{
+  "copyright": "© 2026 Hromada Community",
+  "links": [
+    { "label": "Privacy", "url": "/privacy" },
+    { "label": "Email us", "url": "ref:globals/site@contact.email" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Services",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "What we offer",
+      "lede": "Practical help for newcomers and lifelong Ukrainian-Canadians."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/services",
+      "sort": "title asc"
+    }
+  ]
+}

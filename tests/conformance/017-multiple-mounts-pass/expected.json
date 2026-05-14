@@ -1,0 +1,10 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/news", "kind": "page" },
+    { "url": "/news/launch", "kind": "record" }
+  ],
+  "notes": "Both pages mount collections/news. The detail URL is minted from /news (which uses the default pattern), not from / (which lists but does not declare detail routes). When both pages have the same default detail pattern, the route is minted once and shared."
+}

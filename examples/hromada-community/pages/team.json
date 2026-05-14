@@ -1,0 +1,15 @@
+{
+  "title": "Team",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "The people behind Hromada",
+      "lede": "Volunteers, staff, and community leaders."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/team",
+      "sort": "title asc"
+    }
+  ]
+}
