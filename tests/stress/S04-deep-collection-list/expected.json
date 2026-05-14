@@ -1,0 +1,11 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "diagnostics": [],
+  "routes": [
+    { "url": "/", "kind": "page" },
+    { "url": "/archive/2024/winter", "kind": "page" },
+    { "url": "/archive/2024/winter/alpha", "kind": "record" },
+    { "url": "/archive/2024/winter/beta", "kind": "record" },
+    { "url": "/home", "kind": "redirect" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "summary": { "structural": "spec-ambiguous", "drift": 0, "warning": 0 },
+  "current_validator": {
+    "summary": { "structural": 1, "drift": 0, "warning": 0 },
+    "diagnostics": [
+      { "severity": "structural", "code": "mosaic.record.empty", "source": "pages/section-with-no-content" }
+    ]
+  },
+  "recommended_validator": {
+    "summary": { "structural": 0, "drift": 0, "warning": 0 },
+    "diagnostics": []
+  },
+  "spec_note": "SPEC §2.2 doesn't say what happens to a folder under pages/ without index.{md,json}. Current validator treats it as an empty record (structural). Recommended: ignore silently. Will propose MIP-0014."
+}

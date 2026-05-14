@@ -1,0 +1,6 @@
+{
+  "summary": { "structural": 0, "drift": 1, "warning": 0 },
+  "diagnostics": [
+    { "severity": "drift", "code": "mosaic.selector.unresolved", "source": "pages/index.json" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site": { "name": "Stress S07" },
+  "types": {},
+  "collections": {},
+  "singletons": {},
+  "redirects": [
+    { "from": "/loop", "to": "/loop" }
+  ]
+}

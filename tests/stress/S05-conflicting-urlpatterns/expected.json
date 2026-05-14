@@ -1,0 +1,7 @@
+{
+  "summary": { "structural": 1, "drift": 0, "warning": 0 },
+  "must_include": [
+    { "severity": "structural", "code": "mosaic.route.collision" }
+  ],
+  "spec_note": "Source of route.collision is implementation-defined in current spec. Validator sources at the record path. Recommend spec amendment so all engines agree."
+}

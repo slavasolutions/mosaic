@@ -1,0 +1,8 @@
+{
+  "summary": { "structural": "at-least-1", "drift": 0, "warning": "any" },
+  "must_include_one_of": [
+    { "code": "mosaic.route.collision" },
+    { "code": "mosaic.slug.duplicate" }
+  ],
+  "spec_note": "Folder+direct same-slug collision is undefined in 0.8 spec. Validator currently flags pages-level case as route.collision; collection-level case is uncovered. Recommend MIP-0015 to formalize a 'mosaic.slug.duplicate' code that fires regardless of pages/collections context."
+}

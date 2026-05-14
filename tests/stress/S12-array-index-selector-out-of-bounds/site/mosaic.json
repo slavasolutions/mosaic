@@ -1,0 +1,17 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site": { "name": "Stress S12" },
+  "types": {
+    "Header": {
+      "fields": {
+        "nav": { "type": "array", "of": { "kind": "object", "fields": {
+          "label": { "type": "string", "required": true },
+          "url":   { "type": "string", "required": true }
+        } } }
+      }
+    }
+  },
+  "collections": {},
+  "singletons": { "header": { "type": "Header" } }
+}

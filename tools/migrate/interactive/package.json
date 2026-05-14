@@ -1,0 +1,14 @@
+{
+  "name": "@mosaic/migrate-interactive",
+  "version": "0.8.0",
+  "description": "Interactive step-by-step CLI for migrating an Astro site to Mosaic 0.8.",
+  "main": "migrate.js",
+  "bin": {
+    "mosaic-migrate-interactive": "migrate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true,
+  "license": "MIT"
+}

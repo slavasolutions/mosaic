@@ -1,0 +1,10 @@
+{
+  "title": "Winter 2024 archive",
+  "sections": [
+    {
+      "type": "collection-list",
+      "from": "collections/notes",
+      "sort": "title asc"
+    }
+  ]
+}

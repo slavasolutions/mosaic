@@ -352,11 +352,135 @@ function checkSlugCase(slug, slugCaseMap, dirRel, diagnostics, fileInfo) {
   return true;
 }
 
-// Compute the URL of a page record per SPEC §3.1.
+// Compute the URL of a page record per SPEC §3.1 (1-level only; deprecated in favor
+// of enumeratePageTree which handles arbitrary depth).
 function pageRecordUrl(pageRec) {
-  // pageRec.parentDir === "pages"; pageRec.slug is filename stem.
   if (pageRec.slug === "index") return "/";
   return "/" + pageRec.slug;
+}
+
+// Recursive page-tree walk for deep page hierarchies (SPEC §3.1: "the path from
+// pages/ to the page determines its URL"). Pages can be arbitrarily deep:
+//
+//   pages/index.{md,json}                  -> /
+//   pages/about.md                         -> /about
+//   pages/about/index.md                   -> /about (folder-shape)
+//   pages/about/team.md                    -> /about/team
+//   pages/about/history/index.md           -> /about/history
+//   pages/archive/2024/winter.json         -> /archive/2024/winter
+//
+// A directory under pages/ that has no index.{md,json} is NOT a record; it's a
+// URL-prefix-only container. Its contents are still walked.
+function enumeratePageTree(siteRoot, diagnostics) {
+  const pagesDir = path.join(siteRoot, "pages");
+  if (!fs.existsSync(pagesDir)) return [];
+  const out = [];
+  walkPagesDir(siteRoot, "pages", [], out, diagnostics);
+  return out;
+}
+
+function walkPagesDir(siteRoot, dirRel, urlSegments, out, diagnostics) {
+  const dirAbs = path.join(siteRoot, dirRel);
+  const entries = readDirSafe(dirAbs);
+  if (!entries) return;
+
+  const directBySlug = new Map();
+  const subdirs = [];
+  const slugCaseMap = new Map();
+
+  for (const ent of entries) {
+    if (isHidden(ent.name)) continue;
+    const abs = path.join(dirAbs, ent.name);
+    if (ent.isFile()) {
+      const m = /^(.+)\.(md|json)$/.exec(ent.name);
+      if (!m) continue;
+      const slug = m[1];
+      const ext = m[2];
+      if (!directBySlug.has(slug)) directBySlug.set(slug, { mdAbs: null, jsonAbs: null });
+      const e = directBySlug.get(slug);
+      if (ext === "md") e.mdAbs = abs;
+      else e.jsonAbs = abs;
+    } else if (ent.isDirectory()) {
+      subdirs.push({ name: ent.name, abs });
+    }
+  }
+
+  // `index.{md,json}` at a non-top-level dir has already been consumed by the parent's
+  // folder-shape record at this dir's URL. Drop it from direct enumeration to avoid
+  // double-recording the same content as both folder-shape and direct.
+  if (urlSegments.length > 0) {
+    directBySlug.delete("index");
+  }
+
+  for (const sub of subdirs) {
+    if (!validateSlug(sub.name, path.posix.join(dirRel, sub.name), diagnostics)) continue;
+    if (!checkSlugCase(sub.name, slugCaseMap, dirRel, diagnostics)) continue;
+
+    const subEntries = readDirSafe(sub.abs) || [];
+    let mdAbs = null;
+    let jsonAbs = null;
+    for (const e of subEntries) {
+      if (e.isFile() && !isHidden(e.name)) {
+        if (e.name === "index.md") mdAbs = path.join(sub.abs, e.name);
+        else if (e.name === "index.json") jsonAbs = path.join(sub.abs, e.name);
+      }
+    }
+
+    if (directBySlug.has(sub.name)) {
+      diagnostics.structural(
+        "mosaic.route.collision",
+        path.posix.join(dirRel, sub.name),
+        `slug "${sub.name}" exists both as a folder and as a direct file under ${dirRel}`
+      );
+      directBySlug.delete(sub.name);
+      continue;
+    }
+
+    const segments = urlSegments.concat([sub.name]);
+    const recRel = path.posix.join(dirRel, sub.name);
+
+    if (mdAbs || jsonAbs) {
+      const rec = buildRecord(siteRoot, dirRel, sub.name, {
+        mdAbs,
+        jsonAbs,
+        location: "folder",
+        dataDir: recRel,
+        sourcePath: recRel,
+      }, diagnostics);
+      rec._url = "/" + segments.join("/");
+      rec._pathSegments = segments;
+      out.push(rec);
+    }
+    walkPagesDir(siteRoot, recRel, segments, out, diagnostics);
+  }
+
+  for (const [slug, info] of directBySlug) {
+    if (!validateSlug(slug, path.posix.join(dirRel, slug), diagnostics, { ...info, dirRel })) continue;
+    if (!checkSlugCase(slug, slugCaseMap, dirRel, diagnostics, info)) continue;
+
+    const sourceAbs = info.jsonAbs || info.mdAbs;
+    const sourcePath = relPath(siteRoot, sourceAbs);
+
+    const rec = buildRecord(siteRoot, dirRel, slug, {
+      mdAbs: info.mdAbs,
+      jsonAbs: info.jsonAbs,
+      location: "direct",
+      dataDir: info.jsonAbs ? dirRel : null,
+      sourcePath,
+    }, diagnostics);
+
+    if (urlSegments.length === 0 && slug === "index") {
+      rec._url = "/";
+      rec._pathSegments = [];
+    } else if (slug === "index") {
+      rec._url = "/" + urlSegments.join("/");
+      rec._pathSegments = urlSegments.slice();
+    } else {
+      rec._url = "/" + urlSegments.concat([slug]).join("/");
+      rec._pathSegments = urlSegments.concat([slug]);
+    }
+    out.push(rec);
+  }
 }
 
 // Reserved-name check for declared singletons.
@@ -378,6 +502,7 @@ function locateSingleton(siteRoot, name) {
 
 module.exports = {
   enumerateRecords,
+  enumeratePageTree,
   buildRecord,
   pageRecordUrl,
   isReservedRootName,

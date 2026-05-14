@@ -12,6 +12,7 @@ const { Diagnostics } = require("./lib/diagnostics");
 const { loadManifest } = require("./lib/manifest");
 const {
   enumerateRecords,
+  enumeratePageTree,
   pageRecordUrl,
   isReservedRootName,
   locateSingleton,
@@ -172,27 +173,24 @@ function buildSiteIndex(sitePath, manifest, diagnostics) {
     allRecords: [],
   };
 
-  // 0) Pages
+  // 0) Pages — recursive walk for deep page hierarchies (SPEC §3.1).
   const pagesDir = path.join(sitePath, "pages");
   if (fs.existsSync(pagesDir)) {
-    const pageRecs = enumerateRecords(sitePath, "pages", diagnostics, { allowIndex: true });
-    // Apply home.reserved rule.
+    const pageRecs = enumeratePageTree(sitePath, diagnostics);
+    // Apply home.reserved rule on top-level home slug only.
     pageRecs.forEach((rec) => {
-      if (rec.slug === "home") {
+      const segs = rec._pathSegments || [];
+      if (segs.length === 1 && segs[0] === "home") {
         diagnostics.structural(
           "mosaic.home.reserved",
           rec.sourcePath,
-          'the slug "home" is reserved at pages/'
+          'the slug "home" is reserved at the top of pages/'
         );
-        // Don't mint a route for the reserved page — prevents a downstream
-        // redirect.collision against the auto-injected /home → / redirect.
         rec._url = null;
-        return;
       }
-      rec._url = pageRecordUrl(rec);
     });
-    idx.pages = pageRecs;
-    for (const r of pageRecs) idx.allRecords.push(r);
+    idx.pages = pageRecs.filter((r) => r._url !== null);
+    for (const r of idx.pages) idx.allRecords.push(r);
   }
 
   // 1) Collections

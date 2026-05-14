@@ -111,6 +111,20 @@ Every route becomes `<out>/<segments>/index.html`. Choice not in spec; it's rend
 
 ---
 
+## Messages / i18n storage
+
+clear-ucc uses inlang/paraglide message files at `messages/<locale>.json`. These are flat UI strings (not editorial content, not page records). Plan for migration:
+
+- Create a single `messages` singleton at the Mosaic root (`messages.json`) shaped `{ "<locale>": { "<key>": "<text>", ... } }`.
+- Declare a `Messages` type in the manifest with `fields: {}` (the free-form escape hatch from SPEC §8.3.1).
+- inlang/paraglide-aware engines read the singleton as-is; Mosaic preserves it verbatim per MIP-0009.
+
+This is the pattern the interactive migrator (`tools/migrate/interactive/`) uses for messages.
+
+## Per-page meta — future MIP candidate
+
+You floated the idea of a per-page **meta** file that bundles SEO / OG / structured-data / page-specific routing hints. For 0.8 the migrator surfaces this as a `meta` singleton (site-wide defaults) and per-record `$astro.meta` fields (page-specific overrides). The proper spec treatment — a normative meta convention covering open-graph, twitter cards, structured data, canonical URLs — is a future-MIP candidate. Filed for 0.9+ consideration; not blocking 0.8 ship.
+
 ## Localization plan (for clear-ucc migration)
 
 clear-ucc uses inlang/paraglide for i18n. Mosaic 0.8 only supports `site.locale` (single-locale). For multi-locale migration, three options in order of pragmatism:

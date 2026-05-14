@@ -1,0 +1,6 @@
+{
+  "title": "Notes",
+  "sections": [
+    { "type": "collection-list", "from": "collections/notes/" }
+  ]
+}

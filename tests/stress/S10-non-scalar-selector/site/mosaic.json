@@ -1,0 +1,18 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site": { "name": "Stress S10" },
+  "types": {
+    "SiteCfg": {
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "social": { "type": "array", "of": { "kind": "object", "fields": {
+          "platform": { "type": "string", "required": true },
+          "url": { "type": "string", "required": true }
+        } } }
+      }
+    }
+  },
+  "collections": {},
+  "singletons": { "site": { "type": "SiteCfg" } }
+}

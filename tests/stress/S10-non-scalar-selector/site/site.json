@@ -1,0 +1,7 @@
+{
+  "name": "Stress S10",
+  "social": [
+    { "platform": "twitter", "url": "https://twitter.com/example" },
+    { "platform": "github",  "url": "https://github.com/example" }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "summary": { "structural": 0, "drift": 0, "warning": 0 },
+  "spec_note": "Validator strips trailing slash. Spec silent. One-line clarification recommended."
+}

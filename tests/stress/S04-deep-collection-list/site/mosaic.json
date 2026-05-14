@@ -1,0 +1,8 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site": { "name": "Stress S04" },
+  "types": { "Note": { "fields": { "title": { "type": "string", "required": true } } } },
+  "collections": { "notes": { "type": "Note" } },
+  "singletons": {}
+}

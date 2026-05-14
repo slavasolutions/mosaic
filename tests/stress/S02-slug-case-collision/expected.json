@@ -1,0 +1,7 @@
+{
+  "summary": { "structural": "at-least-1", "drift": 0, "warning": 0 },
+  "must_include": [
+    { "severity": "structural", "code": "mosaic.slug.invalid" }
+  ],
+  "spec_note": "Both slug.invalid and slug.case rules apply. Spec doesn't pin which fires first or whether one short-circuits the other. Current validator emits slug.invalid and may skip the case-collision pass for the failed-slug record."
+}
