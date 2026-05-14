@@ -1,0 +1,11 @@
+{
+  "logo": "asset:images/logo.svg",
+  "nav": [
+    { "label": "Journal", "url": "/journal" },
+    { "label": "Projects", "url": "/projects" },
+    { "label": "Essays", "url": "/essays" },
+    { "label": "Team", "url": "/team" },
+    { "label": "About", "url": "/about" },
+    { "label": "Colophon", "url": "/colophon" }
+  ]
+}

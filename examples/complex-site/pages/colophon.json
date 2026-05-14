@@ -1,0 +1,27 @@
+{
+  "title": "Colophon",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "About this site"
+    },
+    {
+      "type": "definition-list",
+      "items": [
+        { "term": "Studio email", "definition": "ref:site@contact.email" },
+        { "term": "Studio phone", "definition": "ref:site@contact.phone" },
+        { "term": "First nav label", "definition": "ref:header@nav.0.label" },
+        { "term": "Body typeface", "definition": "ref:tokens@font.serif" },
+        { "term": "Press accent color", "definition": "ref:tokens@color.accent.press" },
+        { "term": "On margins, opening line", "definition": "ref:essays/on-margins@why-margins-matter" }
+      ]
+    },
+    {
+      "type": "contact-block",
+      "email": "ref:site@contact.email",
+      "phone": "ref:site@contact.phone",
+      "address": "ref:site@contact.address",
+      "social": "ref:site@social"
+    }
+  ]
+}

@@ -8,10 +8,13 @@ Reference contracts for the v1 tool list. Each subdirectory describes one tool's
 |------------|---------------------------------------------------------------|-----------------------|
 | `validate` | Check structure, schema conformance, ref integrity            | Every build, every CI |
 | `index`    | Produce a derived index (JSON or SQLite)                      | Build time            |
-| `init`     | Scaffold a fresh Mosaic site                                  | Once per project      |
+| `init`     | Scaffold a fresh Mosaic site from a manifest                  | Once per project      |
 | `infer`    | Generate a draft `mosaic.json` from existing content          | During migration      |
 | `migrate`  | Convert a non-Mosaic folder into Mosaic shape                 | Once per legacy site  |
 | `fix`      | Apply mechanical drift repairs                                | After schema changes  |
+| `render`   | Emit a basic HTML wireframe site from a Mosaic folder         | Proofing, theming     |
+
+A reference implementation of `validate` lives under `validate/impl/`. Other tools have their own `impl/` directories as they land.
 
 ## Conformance
 

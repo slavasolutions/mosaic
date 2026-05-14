@@ -1,0 +1,14 @@
+{
+  "name": "Glasshouse Press",
+  "tagline": "Small books, careful printing, occasional essays.",
+  "contact": {
+    "email": "studio@glasshouse.example.com",
+    "phone": "+1-503-555-0142",
+    "address": "418 SE Belmont, Portland, OR"
+  },
+  "social": [
+    { "platform": "Mastodon", "url": "https://mastodon.example/@glasshouse" },
+    { "platform": "Instagram", "url": "https://instagram.example/glasshousepress" },
+    { "platform": "Are.na", "url": "https://are.na/glasshouse-press" }
+  ]
+}

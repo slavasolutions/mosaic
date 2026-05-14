@@ -1,0 +1,17 @@
+{
+  "title": "Journal",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "From the studio floor",
+      "lede": "Short notes on what we're printing, learning, and breaking."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/posts",
+      "sort": "date desc",
+      "limit": 50,
+      "urlPattern": "/journal/{slug}"
+    }
+  ]
+}

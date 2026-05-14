@@ -1,0 +1,15 @@
+{
+  "title": "Team",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "Who's here",
+      "lede": "Two printers and a rotating cast of interns."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/team",
+      "sort": "title asc"
+    }
+  ]
+}

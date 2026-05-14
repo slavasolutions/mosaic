@@ -1,0 +1,15 @@
+{
+  "title": "Essays",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "Longer pieces",
+      "lede": "Occasional writing on craft, paper, and the slow trades."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/essays",
+      "sort": "date desc"
+    }
+  ]
+}

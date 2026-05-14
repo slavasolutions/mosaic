@@ -1,0 +1,8 @@
+{
+  "copyright": "© 2026 Glasshouse Press",
+  "links": [
+    { "label": "Email the studio", "url": "ref:site@contact.email" },
+    { "label": "First nav item", "url": "ref:header@nav.0.url" },
+    { "label": "Colophon", "url": "/colophon" }
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "$schema": "https://mosaic.dev/schemas/0.7.json",
-  "version": "0.7",
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
   "site": {
     "name": "Hromada Community",
     "locale": "en-CA",
@@ -22,7 +22,7 @@
         "role": { "type": "string", "required": true },
         "email": { "type": "string" },
         "photo": { "type": "asset" },
-        "colleagues": { "type": "array", "of": "ref" },
+        "colleagues": { "type": "array", "of": { "kind": "ref", "to": "team" } },
         "bio": { "type": "markdown" }
       }
     },
@@ -52,25 +52,56 @@
     "Header": {
       "fields": {
         "logo": { "type": "asset" },
-        "nav": { "type": "array" }
+        "nav": { "type": "array", "of": { "kind": "object", "fields": {
+          "label": { "type": "string", "required": true },
+          "url": { "type": "string", "required": true }
+        } } }
       }
     },
     "Footer": {
       "fields": {
         "copyright": { "type": "string" },
-        "links": { "type": "array" }
+        "links": { "type": "array", "of": { "kind": "object", "fields": {
+          "label": { "type": "string", "required": true },
+          "url": { "type": "string", "required": true }
+        } } }
+      }
+    },
+    "DesignTokens": {
+      "description": "DTCG-shaped design tokens. Free-form object; Mosaic does not validate DTCG internals.",
+      "fields": {
+        "tokens": { "type": "object" }
       }
     }
   },
   "collections": {
-    "news": { "type": "NewsItem" },
-    "team": { "type": "TeamMember" },
-    "services": { "type": "Service" },
-    "events": { "type": "Event" }
+    "news": {
+      "type": "NewsItem",
+      "defaultSort": "date desc",
+      "defaultMount": "/news"
+    },
+    "team": {
+      "type": "TeamMember",
+      "defaultSort": "title asc",
+      "defaultMount": "/team"
+    },
+    "services": {
+      "type": "Service",
+      "defaultMount": "/services"
+    },
+    "events": {
+      "type": "Event",
+      "defaultSort": "date asc",
+      "defaultMount": "/events"
+    }
   },
-  "globals": {
+  "singletons": {
     "site": { "type": "SiteConfig" },
     "header": { "type": "Header" },
-    "footer": { "type": "Footer" }
-  }
+    "footer": { "type": "Footer" },
+    "tokens": { "type": "DesignTokens" }
+  },
+  "redirects": [
+    { "from": "/news/launch", "to": "/news/2025-03-12-launch", "status": 301 }
+  ]
 }

@@ -1,0 +1,15 @@
+{
+  "title": "Projects",
+  "sections": [
+    {
+      "type": "page-intro",
+      "headline": "Books and editions",
+      "lede": "Selected work from the last few years."
+    },
+    {
+      "type": "collection-list",
+      "from": "collections/projects",
+      "sort": "year desc"
+    }
+  ]
+}

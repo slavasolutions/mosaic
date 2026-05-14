@@ -1,30 +1,34 @@
 # Example: Hromada Community
 
-A reference Mosaic 0.7 site. Read this directory top-to-bottom to see every spec rule in working form.
+A reference Mosaic 0.8 site. Read this directory top-to-bottom to see every spec rule in working form.
 
 ## What's exercised here
 
 | Spec rule                          | Where to look                                                    |
 |------------------------------------|------------------------------------------------------------------|
 | Root layout                        | This directory                                                   |
-| `mosaic.json` schema               | `mosaic.json`                                                    |
+| `mosaic.json` schema (0.8 full manifest) | `mosaic.json` (types, collections w/ defaults, singletons, redirects) |
 | Direct `.md` record                | `collections/news/2025-03-12-launch.md`                          |
 | Direct `.md` + `.json` sidecar     | `collections/news/2025-04-02-grant.{md,json}`                    |
 | Folder record with co-located asset | `collections/news/2025-05-15-recap/`                            |
 | Direct `.json` only                | `collections/team/ben.json`                                      |
 | Folder record + relative refs      | `collections/team/anna/` (refs `./bio.md`, `./photo.jpg`)         |
-| Sidecar where md provides title    | `collections/team/maria.{md,json}` (no `title` in JSON, H1 wins) |
+| Sidecar where md provides title    | `collections/team/maria.{md,json}` (no `title` in JSON, H1 wins — see MIP-0010) |
 | Composed homepage with sections    | `pages/index.json` + `pages/index.md`                            |
 | Plain prose page                   | `pages/about.md`                                                 |
-| Folder-shape page                  | `pages/annual-report-2024/`                                      |
+| Folder-shape page                  | `pages/annual-report-2024/` (with co-located `cover.jpg`)        |
 | Data-only page                     | `pages/contact.json`                                             |
-| Globals                            | `globals/site.json`, `globals/header.json`, `globals/footer.json` |
+| Root-level singletons              | `site.json`, `header.json`, `footer.json`, `tokens.json` at the site root |
+| Design tokens singleton (DTCG)     | `tokens.json` — color, font, space tokens                        |
+| Redirects                          | `mosaic.json#redirects` — `/news/launch` → `/news/2025-03-12-launch` |
+| Default sort + mount per collection | `mosaic.json#collections` — `news` (`date desc` /news), `team` (`title asc` /team), `services` (/services), `events` (`date asc` /events) |
+| Home is `/`                        | `pages/index.{json,md}` mints `/`; no `pages/home.*` exists      |
 | `collection-list` routing          | `pages/news.json`, `pages/services.json`, `pages/team.json`, `pages/events.json` |
 | Multiple mounts of same collection | `pages/index.json` (limit 3) and `pages/news.json` (limit 20) both mount `collections/news` |
 | `ref:` resolution                  | Throughout (`ref:team/anna`, `ref:services/settlement`, etc.)    |
-| `asset:` resolution                | `globals/header.json` (`asset:images/logo.svg`)                  |
-| Relative `./` refs                 | `collections/team/anna/index.json`, `pages/annual-report-2024/index.json` |
-| Selectors                          | `globals/footer.json`, `pages/contact.json` (`ref:globals/site@contact.email`) |
+| `asset:` resolution                | `header.json` (`asset:images/logo.svg`)                          |
+| Relative `./` refs                 | `collections/team/anna/index.json`, `pages/annual-report-2024/index.json` (`./cover.jpg`, `./index.md`) |
+| Selectors                          | `footer.json`, `pages/contact.json` (`ref:site@contact.email`)   |
 | Circular refs                      | `collections/team/anna` ↔ `team/ben` ↔ `team/maria` (colleagues) |
 
 ## Expected routes
@@ -50,3 +54,10 @@ A reference Mosaic 0.7 site. Read this directory top-to-bottom to see every spec
 | `/events/open-house`      | `collections/events/open-house.json`            |
 | `/contact`                | `pages/contact.json`                            |
 | `/annual-report-2024`     | `pages/annual-report-2024/`                     |
+
+## Expected redirects
+
+| From              | To                          | Status | Source            |
+|-------------------|-----------------------------|--------|-------------------|
+| `/news/launch`    | `/news/2025-03-12-launch`   | 301    | `mosaic.json`     |
+| `/home`           | `/`                         | 301    | auto (§3.2)       |

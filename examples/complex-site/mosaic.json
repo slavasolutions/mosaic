@@ -1,0 +1,164 @@
+{
+  "$schema": "https://mosaic.dev/schemas/0.8.json",
+  "version": "0.8",
+  "site": {
+    "name": "Glasshouse Press",
+    "locale": "en-US",
+    "url": "https://glasshouse.example.com"
+  },
+  "types": {
+    "Post": {
+      "description": "A blog entry. Date is required so default sort by date works.",
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "date": { "type": "date", "required": true },
+        "summary": { "type": "string" },
+        "hero": { "type": "asset" },
+        "tags": { "type": "array", "of": "string" },
+        "author": { "type": "ref", "to": "team" },
+        "related": { "type": "array", "of": { "kind": "ref", "to": "posts" } },
+        "body": { "type": "markdown" }
+      }
+    },
+    "Project": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "client": { "type": "string" },
+        "year": { "type": "number" },
+        "status": { "type": "string" },
+        "cover": { "type": "asset" },
+        "credits": {
+          "type": "array",
+          "of": {
+            "kind": "object",
+            "fields": {
+              "role": { "type": "string", "required": true },
+              "person": { "type": "ref", "to": "team" }
+            }
+          }
+        },
+        "body": { "type": "markdown" }
+      }
+    },
+    "TeamMember": {
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "role": { "type": "string", "required": true },
+        "email": { "type": "string" },
+        "photo": { "type": "asset" },
+        "colleagues": { "type": "array", "of": { "kind": "ref", "to": "team" } },
+        "bio": { "type": "markdown" }
+      }
+    },
+    "Essay": {
+      "description": "Long-form pieces. Title may resolve from H1 only.",
+      "fields": {
+        "title": { "type": "string" },
+        "date": { "type": "date", "required": true },
+        "dek": { "type": "string" },
+        "body": { "type": "markdown" }
+      }
+    },
+    "SiteConfig": {
+      "fields": {
+        "name": { "type": "string", "required": true },
+        "tagline": { "type": "string" },
+        "contact": {
+          "type": "object",
+          "fields": {
+            "email": { "type": "string", "required": true },
+            "phone": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        },
+        "social": {
+          "type": "array",
+          "of": {
+            "kind": "object",
+            "fields": {
+              "platform": { "type": "string", "required": true },
+              "url": { "type": "string", "required": true }
+            }
+          }
+        }
+      }
+    },
+    "Header": {
+      "fields": {
+        "logo": { "type": "asset" },
+        "nav": {
+          "type": "array",
+          "of": {
+            "kind": "object",
+            "fields": {
+              "label": { "type": "string", "required": true },
+              "url": { "type": "string", "required": true }
+            }
+          }
+        }
+      }
+    },
+    "Footer": {
+      "fields": {
+        "copyright": { "type": "string", "required": true },
+        "links": {
+          "type": "array",
+          "of": {
+            "kind": "object",
+            "fields": {
+              "label": { "type": "string", "required": true },
+              "url": { "type": "string", "required": true }
+            }
+          }
+        }
+      }
+    },
+    "DesignTokens": {
+      "description": "DTCG-shaped tokens. Engines preserve the payload verbatim.",
+      "fields": {}
+    },
+    "Studio": {
+      "description": "Studio-specific singleton: hours, location, principles.",
+      "fields": {
+        "title": { "type": "string", "required": true },
+        "hours": { "type": "string" },
+        "location": { "type": "string" },
+        "principles": { "type": "array", "of": "string" }
+      }
+    }
+  },
+  "collections": {
+    "posts": {
+      "type": "Post",
+      "defaultSort": "date desc",
+      "defaultMount": "/journal"
+    },
+    "projects": {
+      "type": "Project",
+      "defaultSort": "year desc",
+      "defaultMount": "/projects"
+    },
+    "team": {
+      "type": "TeamMember",
+      "defaultSort": "title asc",
+      "defaultMount": "/team"
+    },
+    "essays": {
+      "type": "Essay",
+      "defaultSort": "date desc",
+      "defaultMount": "/essays"
+    }
+  },
+  "singletons": {
+    "site": { "type": "SiteConfig" },
+    "header": { "type": "Header" },
+    "footer": { "type": "Footer" },
+    "tokens": { "type": "DesignTokens" },
+    "studio": { "type": "Studio" }
+  },
+  "redirects": [
+    { "from": "/blog", "to": "/journal", "status": 301 },
+    { "from": "/journal/welcome", "to": "/journal/2025-07-letterpress", "status": 302 },
+    { "from": "/people/iris", "to": "/team/iris-okafor", "status": 308 }
+  ]
+}

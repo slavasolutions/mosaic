@@ -7,14 +7,14 @@
     },
     {
       "type": "contact-block",
-      "email": "ref:globals/site@contact.email",
-      "phone": "ref:globals/site@contact.phone",
-      "address": "ref:globals/site@contact.address"
+      "email": "ref:site@contact.email",
+      "phone": "ref:site@contact.phone",
+      "address": "ref:site@contact.address"
     },
     {
       "type": "form",
       "fields": ["name", "email", "message"],
-      "submitTo": "ref:globals/site@contact.email"
+      "submitTo": "ref:site@contact.email"
     }
   ]
 }

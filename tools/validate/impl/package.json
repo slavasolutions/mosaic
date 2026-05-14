@@ -1,0 +1,14 @@
+{
+  "name": "@mosaic/validate-ref",
+  "version": "0.8.0",
+  "description": "Reference implementation of the Mosaic 0.8 validator. Zero dependencies.",
+  "type": "commonjs",
+  "bin": {
+    "mosaic-validate-ref": "./validate.js"
+  },
+  "main": "./validate.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
