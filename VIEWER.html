@@ -2,21 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mosaic 0.9 — Live folder shape viewer</title>
+<title>Mosaic 0.9 — Live folder shape viewer + STAC / OCI comparison</title>
 <style>
   :root {
-    --c-bg: #fafaf7;
-    --c-bg-elev: #ffffff;
-    --c-bg-sunk: #f3f3ee;
-    --c-line: #e5e3dc;
-    --c-ink: #1a1a1a;
-    --c-ink-soft: #4a4a48;
-    --c-ink-mute: #9a9892;
-    --c-accent: #005bbb;
-    --c-accent-soft: rgba(0, 91, 187, 0.08);
-    --c-accent-ink: #003a78;
-    --code-bg: #1a1a1a;
-    --code-ink: #e8e8e3;
+    --c-bg: #fafaf7; --c-bg-elev: #ffffff; --c-bg-sunk: #f3f3ee;
+    --c-line: #e5e3dc; --c-ink: #1a1a1a; --c-ink-soft: #4a4a48; --c-ink-mute: #9a9892;
+    --c-accent: #005bbb; --c-accent-soft: rgba(0,91,187,0.08); --c-accent-ink: #003a78;
+    --c-stac: #2e7d4f; --c-stac-soft: rgba(46,125,79,0.08);
+    --c-oci: #b8702b; --c-oci-soft: rgba(184,112,43,0.08);
+    --code-bg: #1a1a1a; --code-ink: #e8e8e3;
     --f-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
     --f-serif: "Iowan Old Style", "Apple Garamond", Georgia, serif;
     --f-mono: "SF Mono", Menlo, Monaco, Consolas, monospace;
@@ -26,68 +20,81 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --c-bg: #0f1115; --c-bg-elev: #181b22; --c-bg-sunk: #14171c;
-      --c-line: #2a2e35; --c-ink: #e8e6e3; --c-ink-soft: #c0bdb6;
-      --c-ink-mute: #7a7872; --c-accent: #6ea8fe; --c-accent-soft: rgba(110,168,254,0.12);
-      --c-accent-ink: #b3d0ff;
+      --c-line: #2a2e35; --c-ink: #e8e6e3; --c-ink-soft: #c0bdb6; --c-ink-mute: #7a7872;
+      --c-accent: #6ea8fe; --c-accent-soft: rgba(110,168,254,0.12); --c-accent-ink: #b3d0ff;
+      --c-stac: #8bd5ca; --c-stac-soft: rgba(139,213,202,0.12);
+      --c-oci: #f5a97f; --c-oci-soft: rgba(245,169,127,0.12);
       --code-bg: #0a0c10; --code-ink: #d8d6d0;
     }
   }
   * { box-sizing: border-box; }
-  body {
-    background: var(--c-bg); color: var(--c-ink);
-    font-family: var(--f-sans); font-size: 15px; line-height: 1.55;
-    margin: 0; padding: 32px 24px;
-  }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  .header { margin-bottom: 28px; }
+  body { background: var(--c-bg); color: var(--c-ink); font-family: var(--f-sans);
+    font-size: 15px; line-height: 1.55; margin: 0; padding: 32px 24px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  .header { margin-bottom: 24px; }
   .header .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--c-ink-mute); font-family: var(--f-mono); font-size: 13px; }
   .header .brand strong { color: var(--c-ink); font-family: var(--f-sans); }
-  .header h1 { font-family: var(--f-serif); font-weight: 500; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.01em; }
-  .header p { color: var(--c-ink-soft); margin: 0; max-width: 760px; }
-  .header .meta { color: var(--c-ink-mute); font-family: var(--f-mono); font-size: 12px; margin-top: 14px; }
+  .header h1 { font-family: var(--f-serif); font-weight: 500; font-size: 32px; margin: 0 0 6px; }
+  .header p { color: var(--c-ink-soft); margin: 0; max-width: 820px; }
   .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-ink-mute); margin: 0 0 6px; }
 
-  .tree-shell {
-    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: var(--s-7);
-    align-items: start; margin-top: 32px;
-  }
-  @media (max-width: 900px) { .tree-shell { grid-template-columns: 1fr; } }
-  .tree {
-    background: var(--c-bg-elev); border: 1px solid var(--c-line);
-    border-radius: var(--r-lg); padding: var(--s-5);
-    font-family: var(--f-mono); font-size: 14px; line-height: 1.85;
-  }
-  .tree-row {
-    display: flex; align-items: center; gap: var(--s-2);
-    padding: 2px 8px; border-radius: var(--r-sm);
-    cursor: pointer; transition: background 0.12s ease; user-select: none;
-  }
-  .tree-row:hover { background: var(--c-bg-sunk); }
-  .tree-row.is-active { background: var(--c-accent-soft); color: var(--c-accent-ink); }
-  .tree-prefix { color: var(--c-ink-mute); white-space: pre; }
-  .tree-name { color: var(--c-ink); }
-  .tree-row.is-active .tree-name { color: var(--c-accent-ink); font-weight: 500; }
-  .tree-comment { color: var(--c-ink-mute); font-style: italic; margin-left: auto; font-size: 12px; }
-  .tree-icon { color: var(--c-ink-mute); flex-shrink: 0; }
-  .tree-row.is-active .tree-icon { color: var(--c-accent); }
+  .tabs { display: flex; gap: 2px; margin: 28px 0 0; border-bottom: 1px solid var(--c-line); }
+  .tab { padding: 10px 16px; cursor: pointer; user-select: none; border-bottom: 2px solid transparent;
+    font-family: var(--f-mono); font-size: 13px; color: var(--c-ink-mute); transition: color .15s, border-color .15s; }
+  .tab:hover { color: var(--c-ink-soft); }
+  .tab.is-active { border-bottom-color: var(--c-accent); color: var(--c-accent-ink); font-weight: 600; }
+  .tab[data-spec="stac"].is-active { border-bottom-color: var(--c-stac); color: var(--c-stac); }
+  .tab[data-spec="oci"].is-active { border-bottom-color: var(--c-oci); color: var(--c-oci); }
+  .tab .tab-meta { font-size: 11px; color: var(--c-ink-mute); margin-left: 8px; font-weight: normal; }
 
-  .tree-detail {
-    background: var(--c-bg-sunk); border: 1px solid var(--c-line);
-    border-radius: var(--r-lg); padding: var(--s-5);
-    position: sticky; top: 24px;
-  }
+  .pane { display: none; padding-top: 24px; }
+  .pane.is-active { display: block; }
+
+  .pane-intro { background: var(--c-bg-sunk); border: 1px solid var(--c-line);
+    border-radius: var(--r-lg); padding: var(--s-4) var(--s-5); margin-bottom: 24px; }
+  .pane-intro h2 { font-family: var(--f-serif); font-weight: 500; margin: 0 0 6px; font-size: 22px; }
+  .pane-intro p { margin: 0; color: var(--c-ink-soft); }
+
+  .tree-shell { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: var(--s-7); align-items: start; }
+  @media (max-width: 900px) { .tree-shell { grid-template-columns: 1fr; } }
+
+  .tree { background: var(--c-bg-elev); border: 1px solid var(--c-line); border-radius: var(--r-lg);
+    padding: var(--s-5); font-family: var(--f-mono); font-size: 13px; line-height: 1.85;
+    max-height: 70vh; overflow-y: auto; }
+  .tree-row { display: flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: var(--r-sm);
+    cursor: pointer; transition: background .12s ease; user-select: none; white-space: nowrap; }
+  .tree-row:hover { background: var(--c-bg-sunk); }
+  .tree-row.is-active { background: var(--c-accent-soft); }
+  .tree-row.is-active .tree-name { color: var(--c-accent-ink); font-weight: 500; }
+  .pane[data-spec="stac"] .tree-row.is-active { background: var(--c-stac-soft); }
+  .pane[data-spec="stac"] .tree-row.is-active .tree-name { color: var(--c-stac); }
+  .pane[data-spec="oci"] .tree-row.is-active { background: var(--c-oci-soft); }
+  .pane[data-spec="oci"] .tree-row.is-active .tree-name { color: var(--c-oci); }
+  .tree-toggle { width: 12px; flex-shrink: 0; color: var(--c-ink-mute); font-size: 9px; }
+  .tree-toggle.is-leaf { visibility: hidden; }
+  .tree-indent { display: inline-block; }
+  .tree-icon { color: var(--c-ink-mute); flex-shrink: 0; display: inline-flex; }
+  .tree-name { color: var(--c-ink); }
+  .tree-comment { color: var(--c-ink-mute); font-style: italic; margin-left: auto; font-size: 12px; padding-left: 16px; }
+
+  .tree-detail { background: var(--c-bg-sunk); border: 1px solid var(--c-line); border-radius: var(--r-lg);
+    padding: var(--s-5); position: sticky; top: 24px; }
   .tree-detail h4 { margin: 0 0 var(--s-3); font-family: var(--f-serif); font-weight: 500; font-size: 22px; }
-  .tree-detail .kind {
-    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--c-ink-mute); margin-bottom: var(--s-2);
-  }
+  .tree-detail .kind { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--c-ink-mute); margin-bottom: var(--s-2); }
   .tree-detail p { margin: 0 0 var(--s-3); color: var(--c-ink-soft); }
-  .tree-detail .detail-code {
-    background: var(--code-bg); border: 1px solid var(--c-line);
-    border-radius: var(--r-md); padding: var(--s-3) var(--s-4);
-    font-family: var(--f-mono); font-size: 13px; color: var(--code-ink);
-    white-space: pre; overflow-x: auto;
-  }
+  .tree-detail .detail-code { background: var(--code-bg); border: 1px solid var(--c-line);
+    border-radius: var(--r-md); padding: var(--s-3) var(--s-4); font-family: var(--f-mono);
+    font-size: 12px; color: var(--code-ink); white-space: pre; overflow-x: auto; }
+
+  .compare-row { background: var(--c-bg-sunk); border: 1px solid var(--c-line); border-radius: var(--r-lg);
+    padding: var(--s-4) var(--s-5); margin-top: 24px; font-size: 14px; }
+  .compare-row h3 { margin: 0 0 8px; font-family: var(--f-serif); font-weight: 500; font-size: 18px; }
+  .compare-row table { width: 100%; border-collapse: collapse; }
+  .compare-row td, .compare-row th { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--c-line); vertical-align: top; }
+  .compare-row th { color: var(--c-ink-mute); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .compare-row code { background: var(--c-bg-elev); padding: 1px 4px; border-radius: 3px; font-family: var(--f-mono); font-size: 12px; }
+
   .footer { margin-top: 40px; color: var(--c-ink-mute); font-size: 12px; text-align: center; }
   .footer code { font-family: var(--f-mono); }
 </style>
@@ -96,18 +103,79 @@
 
 <div class="header">
   <div class="brand"><strong>Mosaic</strong> <span>v0.9 draft</span></div>
-  <p class="eyebrow">Live folder shape viewer</p>
-  <h1>The folder is the website.</h1>
-  <p>A Mosaic site is a directory. <strong>Files are records</strong>; <strong>folders are collections</strong>. The folder structure below shows the current 0.9 shape. Hover or click an entry on the left to see what it means.</p>
-  <div class="meta">Reflects: PRINCIPLES.md · SPEC.md (work-in-progress) · 0.9 architectural decisions</div>
+  <p class="eyebrow">Live folder shape viewer + spec comparison</p>
+  <h1>What does this format actually look like on disk?</h1>
+  <p>Three spec families compared. Switch tabs to see how Mosaic, STAC, and OCI organize their content on disk. Click folder rows (▸) to expand. Hover any row for detail. All three solve "directory + manifest + cross-references" — but for different domains.</p>
 </div>
 
-<div class="tree-shell">
-  <div class="tree" id="tree" role="tree" aria-label="Mosaic folder shape"></div>
-  <aside class="tree-detail" id="treeDetail" aria-live="polite"></aside>
+<div class="tabs">
+  <div class="tab is-active" data-tab="mosaic">Mosaic <span class="tab-meta">web content</span></div>
+  <div class="tab" data-spec="stac" data-tab="stac">STAC <span class="tab-meta">geospatial</span></div>
+  <div class="tab" data-spec="oci" data-tab="oci">OCI Image <span class="tab-meta">containers</span></div>
 </div>
 
-<div class="footer">Mosaic 0.9 · open this file in any browser · canonical doc: <code>STATE.md</code></div>
+<section class="pane is-active" data-spec="mosaic" data-tab="mosaic">
+  <div class="pane-intro">
+    <h2>Mosaic — a folder shape for web content</h2>
+    <p>Files are records. Folders are collections. One reserved file (<code>mosaic.json</code>). Refs link records via cascade lookup. Expand folders below to see all the cases discussed in 0.9.</p>
+  </div>
+  <div class="tree-shell">
+    <div class="tree" id="tree-mosaic"></div>
+    <aside class="tree-detail" id="detail-mosaic"></aside>
+  </div>
+  <div class="compare-row">
+    <h3>Three reserved patterns in Mosaic</h3>
+    <table><tr><th>Pattern</th><th>Where</th><th>What</th></tr>
+    <tr><td><code>mosaic.json</code></td><td>Root only</td><td>The manifest. Single reserved filename.</td></tr>
+    <tr><td><code>pages/</code></td><td>Root</td><td>Collection routed by engine convention. Files become URLs.</td></tr>
+    <tr><td><code>index.{json,md}</code></td><td>Any folder</td><td>That folder's default record.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="pane" data-spec="stac" data-tab="stac">
+  <div class="pane-intro">
+    <h2>STAC — SpatioTemporal Asset Catalog</h2>
+    <p>Apache 2.0 spec for satellite imagery and earth observation. Same shape as Mosaic — directory tree of JSON + binary assets — but vocabulary tuned for geo data. Typed <code>rel</code> links between nodes (parent / child / self / derived_from). The closest structural analog to Mosaic; worth reading end-to-end.</p>
+  </div>
+  <div class="tree-shell">
+    <div class="tree" id="tree-stac"></div>
+    <aside class="tree-detail" id="detail-stac"></aside>
+  </div>
+  <div class="compare-row">
+    <h3>STAC vs Mosaic — quick map</h3>
+    <table><tr><th>STAC</th><th>Mosaic equivalent</th></tr>
+    <tr><td>Catalog</td><td><code>mosaic.json</code> at root</td></tr>
+    <tr><td>Collection (with <code>collection.json</code>)</td><td>Collection folder (with <code>index.json</code>)</td></tr>
+    <tr><td>Item (with <code>item.json</code>)</td><td>Record (any <code>.json</code> file)</td></tr>
+    <tr><td>Assets array (typed)</td><td>Refs (<code>ref:</code>, <code>asset:</code> dropped — unified)</td></tr>
+    <tr><td><code>links</code> array with <code>rel</code> types</td><td>Mosaic refs are untyped today; <code>rel</code> types are a post-1.0 candidate</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="pane" data-spec="oci" data-tab="oci">
+  <div class="pane-intro">
+    <h2>OCI Image Layout — container images on disk</h2>
+    <p>Apache 2.0 spec from the Open Container Initiative. How Docker / Podman / containerd persist images. One JSON manifest at root, content-addressed binary blobs in <code>blobs/sha256/</code>. Each blob is fingerprinted by its SHA-256 hash — rename-safe by design.</p>
+  </div>
+  <div class="tree-shell">
+    <div class="tree" id="tree-oci"></div>
+    <aside class="tree-detail" id="detail-oci"></aside>
+  </div>
+  <div class="compare-row">
+    <h3>OCI vs Mosaic — different domain, similar bones</h3>
+    <table><tr><th>OCI</th><th>Mosaic equivalent</th></tr>
+    <tr><td><code>oci-layout</code> (version file)</td><td><code>mosaic.json#version</code> field</td></tr>
+    <tr><td><code>index.json</code> (top manifest)</td><td><code>mosaic.json</code> + engine-emitted index</td></tr>
+    <tr><td><code>blobs/sha256/&lt;hash&gt;</code></td><td>Records named by slug (path-addressed, NOT content-addressed)</td></tr>
+    <tr><td>Descriptors with <code>mediaType</code></td><td>File extension implies type</td></tr>
+    <tr><td>Content-addressed (rename-safe)</td><td>Path-addressed (rename = ref breaks); blind spot #10</td></tr>
+    </table>
+  </div>
+</section>
+
+<div class="footer">Mosaic 0.9 · standalone HTML, opens in any browser · canonical doc: <code>STATE.md</code></div>
 
 </div>
 
@@ -115,137 +183,336 @@
 (function () {
   'use strict';
 
-  var TREE_DATA = [
-    {
-      indent: '',
-      icon: 'folder',
-      name: 'hromada/',
-      comment: 'the site',
-      kind: 'Site root',
-      heading: 'The site root',
-      body: 'A Mosaic site is a directory. The directory name is just a name — the manifest names the actual site. Everything else lives inside.',
-      code: 'hromada/'
-    },
-    {
-      indent: '├── ',
-      icon: 'doc',
-      name: 'mosaic.json',
-      comment: 'manifest',
-      kind: 'Reserved file — the manifest',
-      heading: 'mosaic.json',
-      body: 'The only reserved filename at the root. Declares spec version, identity, optional types (with @type for schema.org alignment), collections, redirects, design tokens. Always present; otherwise this folder is not a Mosaic site.',
-      code: '{\n  "version": "0.9",\n  "site": { "name": "Hromada Community" },\n  "types": {\n    "TeamMember": { "@type": "Person", "fields": {...} }\n  },\n  "collections": {\n    "team": { "type": "TeamMember" }\n  }\n}'
-    },
-    {
-      indent: '├── ',
-      icon: 'folder',
-      name: 'pages/',
-      comment: 'routed pages (conventional)',
-      kind: 'Collection — engine-routed by convention',
-      heading: 'pages/',
-      body: 'Pages is just a collection — but engines route it by convention. Each file or folder here becomes a URL. The folder structure under pages/ becomes the URL hierarchy. pages/index.{json,md} is the home record at /.',
-      code: 'pages/about.json       → /about\npages/services.json    → /services\npages/index.json       → /\npages/blog/post.md     → /blog/post'
-    },
-    {
-      indent: '├── ',
-      icon: 'folder',
-      name: 'team/',
-      comment: 'one record per person',
-      kind: 'Collection — at root',
-      heading: 'team/',
-      body: 'A collection sits directly at the root — no collections/ parent folder needed. Records inside are addressed via ref:team/anna. Engines emit URLs for these records only when a page mounts the collection via a collection-list section.',
-      code: 'team/anna.json         (record)\nteam/ben.json          (record)\nteam/maria/index.json  (folder-shape record)'
-    },
-    {
-      indent: '├── ',
-      icon: 'folder',
-      name: 'news/',
-      comment: 'one file per story',
-      kind: 'Collection — at root',
-      heading: 'news/',
-      body: 'Another collection. Pure prose stories live here as .md files; engines auto-link a sibling .json sidecar for metadata when the slugs match. JSON is the structural record; MD is referenced body content.',
-      code: 'news/2025-launch.md\nnews/2025-launch.json  (auto-linked sidecar)\nnews/spring-update.md'
-    },
-    {
-      indent: '├── ',
-      icon: 'folder',
-      name: 'images/',
-      comment: 'binary assets',
-      kind: 'Collection — binary records',
-      heading: 'images/',
-      body: 'Binary records (images, video, PDFs). The binary file IS the record. An optional same-slug .json sidecar carries metadata (alt, dimensions, caption, license). Addressed by ref:/images/<path> for absolute, or ref:images/<slug>.',
-      code: 'images/hero.jpg            (the record)\nimages/hero.json           (optional metadata)\nimages/logo.svg'
-    },
-    {
-      indent: '├── ',
-      icon: 'doc',
-      name: 'site.json',
-      comment: 'site-wide record',
-      kind: 'Record at root',
-      heading: 'site.json',
-      body: 'A record at the root level. Not a "singleton" structurally — just a JSON file at the root by convention. Holds site-wide content (tagline, contact, social). Addressed by ref:site. Use @selector to grab one field: ref:site@contact.email.',
-      code: '{\n  "name": "Hromada Community",\n  "tagline": "Building belonging",\n  "contact": { "email": "hello@..." }\n}'
-    },
-    {
-      indent: '├── ',
-      icon: 'doc',
-      name: 'header.json',
-      comment: 'top-of-page content',
-      kind: 'Record at root',
-      heading: 'header.json',
-      body: 'Navigation and logo content. Addressed by ref:header. Records like this can be overridden via cascade — drop pages/landing/header.json to override just for that subtree. Cascade walks parent chain, deeper wins, deep-merge.',
-      code: '{\n  "logo": "ref:/images/logo.svg",\n  "nav": [\n    { "label": "About",  "url": "/about" },\n    { "label": "Events", "url": "/events" }\n  ]\n}'
-    },
-    {
-      indent: '├── ',
-      icon: 'doc',
-      name: 'site.x-clearcms.json',
-      comment: 'engine extension sidecar',
-      kind: 'Extension sidecar',
-      heading: 'site.x-clearcms.json',
-      body: 'Engine extensions namespace themselves with x-. Same applies to in-record fields (x-clearcms.translations) and sidecar filenames (<slug>.x-<ns>.json). Engines preserve unknown fields verbatim — round-trip-safe across tools.',
-      code: '{\n  "translations": {\n    "uk": "Хромада",\n    "fr": "Communauté"\n  }\n}'
-    },
-    {
-      indent: '└── ',
-      icon: 'doc',
-      name: 'tokens.json',
-      comment: 'design tokens (DTCG)',
-      kind: 'Record at root',
-      heading: 'tokens.json',
-      body: 'Design tokens are content. Shape follows the W3C Design Tokens Community Group format. Address individual tokens with ref:tokens@color.accent. Renderers expose them as CSS custom properties.',
-      code: '{\n  "color": {\n    "accent":     { "$value": "#005bbb", "$type": "color" },\n    "background": { "$value": "#fafaf7", "$type": "color" }\n  }\n}'
-    }
-  ];
+  var SPECS = {
+    mosaic: [
+      { icon:'folder', name:'hromada/', comment:'the site',
+        kind:'Site root',
+        heading:'The site root',
+        body:'A Mosaic site is a directory. The folder name is just a name; the manifest names the actual site.',
+        code:'hromada/',
+        children:[
+          { icon:'doc', name:'mosaic.json', comment:'manifest',
+            kind:'Reserved file — the manifest',
+            heading:'mosaic.json',
+            body:'The only reserved filename at the root. Declares spec version, identity, types (with @type for schema.org alignment), collections, redirects, design tokens.',
+            code:'{\n  "version": "0.9",\n  "site": { "name": "Hromada Community" },\n  "types": {\n    "TeamMember": { "@type": "Person", "fields": {...} },\n    "NewsItem":   { "@type": "Article", "fields": {...} }\n  },\n  "collections": {\n    "team": { "type": "TeamMember" },\n    "news": { "type": "NewsItem" }\n  }\n}' },
+          { icon:'folder', name:'pages/', comment:'routed by convention',
+            kind:'Collection — engine-routed',
+            heading:'pages/',
+            body:'pages is just a collection — but engines route it by convention. Folder structure under pages/ becomes the URL hierarchy. pages/index.{json,md} = home (/).',
+            code:'pages/index.json       → /\npages/about.json       → /about\npages/blog/post.md     → /blog/post',
+            children:[
+              { icon:'doc', name:'index.json', comment:'home record',
+                kind:'Record', heading:'pages/index.json',
+                body:'The home page. JSON is the structural record. A sibling index.md (if present) is auto-linked as the body.',
+                code:'{\n  "title": "Hromada Community",\n  "sections": [\n    { "type": "prose" },\n    { "type": "collection-list", "from": "news", "limit": 3 }\n  ]\n}' },
+              { icon:'doc', name:'index.md', comment:'auto-linked body',
+                kind:'Body content (auto-linked)', heading:'pages/index.md',
+                body:'Markdown prose. Engine auto-links this to pages/index.json (same slug, no body field in the JSON). The MD becomes the record body.',
+                code:'# Welcome to Hromada\n\nBuilding belonging for the Ukrainian-Canadian community.' },
+              { icon:'doc', name:'about.json', comment:'about page',
+                kind:'Record',
+                heading:'pages/about.json',
+                body:'A page record. Routes to /about. Has a sibling about.md auto-linked as body.',
+                code:'{\n  "title": "About",\n  "author": "ref:team/anna"\n}' },
+              { icon:'doc', name:'about.md', comment:'auto-linked',
+                kind:'Body content', heading:'pages/about.md',
+                body:'Markdown body for pages/about.json. Auto-linked.',
+                code:'# About\n\nWe are a community organization...' },
+              { icon:'folder', name:'about/', comment:'cascade override scope',
+                kind:'Folder (scope for cascade)',
+                heading:'pages/about/',
+                body:'Subfolder under pages/. Records here resolve refs with cascade walking up: pages/about/, pages/, root. Drop a header.json here to override site-wide header for this scope only.',
+                code:'pages/about/header.json overrides root header.json\nfor any record under pages/about/.',
+                children:[
+                  { icon:'doc', name:'header.json', comment:'cascade override',
+                    kind:'Cascade override',
+                    heading:'pages/about/header.json',
+                    body:'A scoped header override. Cascade lookup picks this over root header.json for any record resolving ref:header from inside pages/about/. Deep-merges with the root (objects merge, arrays replace).',
+                    code:'{\n  "title": "About — Hromada Community"\n}' } ] },
+              { icon:'folder', name:'blog/', comment:'deep page hierarchy',
+                kind:'Folder under pages',
+                heading:'pages/blog/',
+                body:'Page paths can nest arbitrarily deep. pages/blog/2025-launch.md routes to /blog/2025-launch.',
+                code:'pages/blog/2025-launch.md → /blog/2025-launch',
+                children:[
+                  { icon:'doc', name:'2025-launch.md', comment:'markdown-only page',
+                    kind:'Bare-MD record (charity)',
+                    heading:'pages/blog/2025-launch.md',
+                    body:'A bare markdown page with no JSON sidecar. Works as engine charity; warning mosaic.record.bare-markdown fires. For full record semantics, add a JSON sidecar.',
+                    code:'# Spring Launch\n\nWe launched today...' } ] }
+            ] },
+          { icon:'folder', name:'team/', comment:'collection at root',
+            kind:'Collection — at root (no collections/ parent)',
+            heading:'team/',
+            body:'Collections sit directly at the root. No collections/ wrapper. Records inside are addressed via ref:team/anna. Multiple shapes can coexist: single-file, paired, folder-shape.',
+            code:'ref:team/anna       → team/anna.json\nref:team/maria      → team/maria/index.json',
+            children:[
+              { icon:'doc', name:'anna.json', comment:'single-file record',
+                kind:'Record',
+                heading:'team/anna.json',
+                body:'A single-file record. The JSON IS the record; no markdown body. Type bound via mosaic.json#collections.team.type.',
+                code:'{\n  "name": "Anna Kovalenko",\n  "jobTitle": "Designer",\n  "email": "anna@hromada.ca",\n  "image": "asset:/images/anna.jpg"\n}' },
+              { icon:'doc', name:'ben.json', comment:'',
+                kind:'Record', heading:'team/ben.json',
+                body:'Another single-file team record.',
+                code:'{\n  "name": "Ben Lee",\n  "jobTitle": "Engineer"\n}' },
+              { icon:'folder', name:'maria/', comment:'folder-shape record',
+                kind:'Folder-shape record',
+                heading:'team/maria/',
+                body:'A record stored as a folder containing index.{json,md}. Use this when a record has co-located assets or many sidecars. Slug = folder name.',
+                code:'team/maria/index.json   (the record)\nteam/maria/index.md     (auto-linked bio)\nteam/maria/portrait.jpg (co-located asset, ref via ./portrait.jpg)',
+                children:[
+                  { icon:'doc', name:'index.json', comment:'folder record',
+                    kind:'Folder-record JSON', heading:'team/maria/index.json',
+                    body:'The structural record for the maria slug.',
+                    code:'{\n  "name": "Maria Kowal",\n  "jobTitle": "Director",\n  "photo": "./portrait.jpg"\n}' },
+                  { icon:'doc', name:'index.md', comment:'bio body',
+                    kind:'Folder-record body', heading:'team/maria/index.md',
+                    body:'Auto-linked body for the folder record.',
+                    code:'# Maria Kowal\n\nFounding director...' }
+                ] }
+            ] },
+          { icon:'folder', name:'news/', comment:'paired + locale variants',
+            kind:'Collection — at root',
+            heading:'news/',
+            body:'News articles. Demonstrates paired records (JSON metadata + MD body via auto-link) and locale variants via filename suffix.',
+            code:'news/2025-launch.json  (metadata)\nnews/2025-launch.md    (body, auto-linked)\nnews/2025-launch.uk.md (Ukrainian body variant)',
+            children:[
+              { icon:'doc', name:'2025-launch.json', comment:'metadata',
+                kind:'Record JSON',
+                heading:'news/2025-launch.json',
+                body:'Article metadata. Body comes from the sibling .md via auto-link.',
+                code:'{\n  "headline": "Spring Launch",\n  "datePublished": "2025-03-12",\n  "author": "ref:team/anna"\n}' },
+              { icon:'doc', name:'2025-launch.md', comment:'body (default locale)',
+                kind:'Body content', heading:'news/2025-launch.md',
+                body:'Default-locale body. Auto-linked to the JSON.',
+                code:'# Spring Launch\n\nToday we celebrate...' },
+              { icon:'doc', name:'2025-launch.uk.json', comment:'locale variant',
+                kind:'Locale variant (uk)',
+                heading:'news/2025-launch.uk.json',
+                body:'Ukrainian-locale variant of the record. Engines resolve at locale uk: this file wins over the default. Mergeable with the base (deep merge).',
+                code:'{\n  "headline": "Весняний запуск"\n}' },
+              { icon:'doc', name:'2025-launch.uk.md', comment:'locale body',
+                kind:'Locale-variant body', heading:'news/2025-launch.uk.md',
+                body:'Ukrainian body variant.',
+                code:'# Весняний запуск\n\nСьогодні ми святкуємо...' }
+            ] },
+          { icon:'folder', name:'images/', comment:'binary collection',
+            kind:'Collection — binary records',
+            heading:'images/',
+            body:'Images are records. The binary file IS the record. Optional .json sidecar (same slug) carries metadata. Addressed via ref:/images/<filename>.',
+            code:'images/hero.jpg              (the record)\nimages/hero.json             (optional metadata)\nref:/images/hero.jpg         → the binary',
+            children:[
+              { icon:'doc', name:'hero.jpg', comment:'binary record',
+                kind:'Binary record',
+                heading:'images/hero.jpg',
+                body:'The binary file IS the record. Engines emit asset-shaped stubs at index time (width, height, alt — auto-detected or from the metadata sidecar).',
+                code:'(binary JPEG content)' },
+              { icon:'doc', name:'hero.json', comment:'metadata sidecar',
+                kind:'Metadata sidecar',
+                heading:'images/hero.json',
+                body:'Optional metadata. Same slug as the binary. Provides alt, dimensions, caption, license, etc. Engines merge this into the asset stub.',
+                code:'{\n  "alt": "Hromada community event",\n  "width": 1920,\n  "height": 1080,\n  "license": "CC-BY-4.0",\n  "credit": "Anna Kovalenko"\n}' },
+              { icon:'doc', name:'logo.svg', comment:'no metadata',
+                kind:'Binary record', heading:'images/logo.svg',
+                body:'A logo. No metadata sidecar — that is fine; engines auto-derive (filename, mime).',
+                code:'(SVG content)' }
+            ] },
+          { icon:'doc', name:'site.json', comment:'root record',
+            kind:'Record at root',
+            heading:'site.json',
+            body:'A record at root. Not "singleton" — just a JSON file at the root by convention. Site-wide content. Addressed by ref:site or sub-field via ref:site@contact.email.',
+            code:'{\n  "name": "Hromada Community",\n  "tagline": "Building belonging",\n  "contact": { "email": "hello@hromada.ca" },\n  "social": { "instagram": "@hromada" }\n}' },
+          { icon:'doc', name:'header.json', comment:'root record',
+            kind:'Record at root',
+            heading:'header.json',
+            body:'Site-wide header. Addressed by ref:header. Can be overridden via cascade — see pages/about/header.json above.',
+            code:'{\n  "logo": "asset:/images/logo.svg",\n  "nav": [\n    { "label": "About",  "url": "/about" },\n    { "label": "Events", "url": "/events" },\n    { "label": "News",   "url": "/news" }\n  ]\n}' },
+          { icon:'doc', name:'header.x-clearcms.json', comment:'engine extension',
+            kind:'Extension sidecar',
+            heading:'header.x-clearcms.json',
+            body:'Engine extensions use x-<namespace>. Both filenames (this) and in-record fields (x-clearcms.translations) follow the same convention. Engines preserve unknown fields verbatim — round-trip-safe across tools.',
+            code:'{\n  "translations": {\n    "uk": { "logo_alt": "Громада" }\n  }\n}' },
+          { icon:'doc', name:'tokens.json', comment:'DTCG design tokens',
+            kind:'Record at root',
+            heading:'tokens.json',
+            body:'Design tokens are content. W3C Design Tokens Community Group format. Address with ref:tokens@color.accent. Renderers expose them as CSS custom properties.',
+            code:'{\n  "color": {\n    "accent":     { "$value": "#005bbb", "$type": "color" },\n    "background": { "$value": "#fafaf7", "$type": "color" }\n  },\n  "font": {\n    "body": { "$value": "system-ui", "$type": "fontFamily" }\n  }\n}' }
+        ] }
+    ],
+
+    stac: [
+      { icon:'folder', name:'earth-imagery/', comment:'STAC catalog root',
+        kind:'STAC catalog root',
+        heading:'The catalog root',
+        body:'A STAC catalog is a folder with catalog.json at root. Links to child collections via typed rel links.',
+        code:'earth-imagery/',
+        children:[
+          { icon:'doc', name:'catalog.json', comment:'top catalog',
+            kind:'Catalog (root)',
+            heading:'catalog.json',
+            body:'The root catalog. Lists child collections via links[] with rel: child. id, type ("Catalog"), description, stac_version, and the links array are required.',
+            code:'{\n  "type": "Catalog",\n  "id": "earth-imagery",\n  "stac_version": "1.0.0",\n  "description": "Sentinel imagery archive",\n  "links": [\n    { "rel": "self",  "href": "./catalog.json" },\n    { "rel": "child", "href": "./sentinel-2/collection.json" }\n  ]\n}' },
+          { icon:'folder', name:'sentinel-2/', comment:'collection',
+            kind:'Collection folder',
+            heading:'sentinel-2/',
+            body:'A STAC collection. Has its own collection.json with shared metadata (license, providers, spatial/temporal extent) and links to child items.',
+            code:'sentinel-2/collection.json\nsentinel-2/<item-id>/item.json',
+            children:[
+              { icon:'doc', name:'collection.json', comment:'collection metadata',
+                kind:'Collection',
+                heading:'sentinel-2/collection.json',
+                body:'Collection-level metadata. Adds providers, license, extent (spatial + temporal). Inherits down to items.',
+                code:'{\n  "type": "Collection",\n  "id": "sentinel-2",\n  "license": "CC-BY-4.0",\n  "providers": [{"name": "ESA"}],\n  "extent": {\n    "spatial": {"bbox": [[-180,-90,180,90]]},\n    "temporal": {"interval": [["2015-06-23T00:00:00Z", null]]}\n  },\n  "links": [\n    { "rel": "self",   "href": "./collection.json" },\n    { "rel": "parent", "href": "../catalog.json" },\n    { "rel": "item",   "href": "./S2A-20250312/item.json" }\n  ]\n}' },
+              { icon:'folder', name:'S2A-20250312/', comment:'one item',
+                kind:'Item folder',
+                heading:'S2A-20250312/',
+                body:'A STAC item. Self-contained folder with item.json and the actual data assets (TIFF, JPEG).',
+                code:'S2A-20250312/item.json\nS2A-20250312/B04.tif\nS2A-20250312/thumb.jpg',
+                children:[
+                  { icon:'doc', name:'item.json', comment:'item metadata',
+                    kind:'Item',
+                    heading:'S2A-20250312/item.json',
+                    body:'Item metadata. Geometry, bbox, properties (datetime + custom fields), and an assets dict mapping role names to file references with mediaType.',
+                    code:'{\n  "type": "Feature",\n  "stac_version": "1.0.0",\n  "id": "S2A-20250312",\n  "geometry": { "type": "Polygon", "coordinates": [...] },\n  "bbox": [-122.5, 37.7, -122.3, 37.9],\n  "properties": { "datetime": "2025-03-12T18:34:11Z" },\n  "assets": {\n    "red": { "href": "./B04.tif", "type": "image/tiff",\n             "roles": ["data"] },\n    "thumbnail": { "href": "./thumb.jpg", "type": "image/jpeg",\n                   "roles": ["thumbnail"] }\n  },\n  "links": [\n    { "rel": "self",       "href": "./item.json" },\n    { "rel": "parent",     "href": "../collection.json" },\n    { "rel": "derived_from", "href": "../source-S2A-raw/item.json" }\n  ]\n}' },
+                  { icon:'doc', name:'B04.tif', comment:'red band data',
+                    kind:'Asset (binary)', heading:'B04.tif',
+                    body:'A binary asset referenced from the item via the assets dict.',
+                    code:'(GeoTIFF binary data)' },
+                  { icon:'doc', name:'thumb.jpg', comment:'thumbnail',
+                    kind:'Asset (binary)', heading:'thumb.jpg',
+                    body:'Quick-look thumbnail. Same item, different role.',
+                    code:'(JPEG binary data)' }
+                ] }
+            ] }
+        ] }
+    ],
+
+    oci: [
+      { icon:'folder', name:'busybox-image/', comment:'OCI image layout root',
+        kind:'OCI image layout root',
+        heading:'OCI image layout',
+        body:'A container image as a directory. Required files: oci-layout (version) and index.json (top manifest). All other content lives as content-addressed blobs.',
+        code:'busybox-image/',
+        children:[
+          { icon:'doc', name:'oci-layout', comment:'version marker',
+            kind:'Required version file',
+            heading:'oci-layout',
+            body:'One-line JSON declaring the image-layout spec version. Marks this directory as conforming to OCI Image Layout.',
+            code:'{"imageLayoutVersion": "1.0.0"}' },
+          { icon:'doc', name:'index.json', comment:'top manifest',
+            kind:'Top-level manifest',
+            heading:'index.json',
+            body:'The entry point. Contains a manifests array of descriptors, each pointing at a blob by SHA-256 digest with a mediaType. Multi-platform images list one manifest per platform.',
+            code:'{\n  "schemaVersion": 2,\n  "mediaType": "application/vnd.oci.image.index.v1+json",\n  "manifests": [\n    {\n      "mediaType": "application/vnd.oci.image.manifest.v1+json",\n      "digest": "sha256:abc123...",\n      "size": 1024,\n      "platform": { "architecture": "amd64", "os": "linux" }\n    }\n  ]\n}' },
+          { icon:'folder', name:'blobs/', comment:'content-addressed',
+            kind:'Content-addressed blob store',
+            heading:'blobs/',
+            body:'Holds all binary content. Every blob is named by its SHA-256 hash. The hash IS the address — same content always gets the same name. Rename-safe by design.',
+            code:'blobs/sha256/<hex-digest>',
+            children:[
+              { icon:'folder', name:'sha256/', comment:'',
+                kind:'Hash-algorithm subfolder',
+                heading:'blobs/sha256/',
+                body:'Subfolder per hash algorithm. SHA-256 is the standard.',
+                code:'blobs/sha256/abc123...\nblobs/sha256/def456...',
+                children:[
+                  { icon:'doc', name:'abc123def456...', comment:'manifest blob',
+                    kind:'Manifest blob',
+                    heading:'blobs/sha256/abc123...',
+                    body:'An image manifest. Lists the config + layers for this image. Stored AS a blob — referenced from index.json by digest.',
+                    code:'{\n  "schemaVersion": 2,\n  "config": {\n    "mediaType": "application/vnd.oci.image.config.v1+json",\n    "digest": "sha256:111aaa...",\n    "size": 568\n  },\n  "layers": [\n    {\n      "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",\n      "digest": "sha256:222bbb...",\n      "size": 1928948\n    }\n  ]\n}' },
+                  { icon:'doc', name:'111aaa222bbb...', comment:'config blob',
+                    kind:'Config blob',
+                    heading:'blobs/sha256/111aaa...',
+                    body:'The image config. Defines environment, entrypoint, working directory, exposed ports. Stored as JSON in a blob.',
+                    code:'{\n  "architecture": "amd64",\n  "os": "linux",\n  "config": {\n    "Env": ["PATH=/usr/bin:/bin"],\n    "Entrypoint": ["/bin/sh"]\n  },\n  "rootfs": {\n    "type": "layers",\n    "diff_ids": ["sha256:222bbb..."]\n  }\n}' },
+                  { icon:'doc', name:'222bbb333ccc...', comment:'layer tarball',
+                    kind:'Layer blob (tar+gzip)',
+                    heading:'blobs/sha256/222bbb...',
+                    body:'A filesystem layer. Tarball of files (gzipped). Stacked on top of base layers at runtime to assemble the container filesystem.',
+                    code:'(gzipped tar archive of layer files)' }
+                ] }
+            ] }
+        ] }
+    ]
+  };
 
   function iconSvg(kind) {
     if (kind === 'folder') {
-      return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
-        + '<path d="M1.5 3.5A1 1 0 0 1 2.5 2.5h3.2l1 1.4h6.8a1 1 0 0 1 1 1v6.6a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1z"'
-        + ' stroke="currentColor" stroke-width="1.3"/></svg>';
+      return '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1.5 3.5A1 1 0 0 1 2.5 2.5h3.2l1 1.4h6.8a1 1 0 0 1 1 1v6.6a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1z" stroke="currentColor" stroke-width="1.3"/></svg>';
     }
-    return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
-      + '<path d="M3 1.5h6l4 4v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1z m6 0v3a1 1 0 0 0 1 1h3"'
-      + ' stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+    return '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 1.5h6l4 4v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1z m6 0v3a1 1 0 0 0 1 1h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+  var state = {};
+
+  function flatten(nodes, depth, prefix, out, expandedSet, parentKey) {
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var isLast = (i === nodes.length - 1);
+      var key = (parentKey ? parentKey + '/' : '') + n.name + '#' + depth;
+      var indent = prefix + (depth === 0 ? '' : (isLast ? '└── ' : '├── '));
+      var hasKids = n.children && n.children.length > 0;
+      var isOpen = expandedSet.has(key);
+      out.push({ node: n, indent: indent, hasKids: hasKids, isOpen: isOpen, key: key });
+      if (hasKids && isOpen) {
+        var childPrefix = prefix + (depth === 0 ? '' : (isLast ? '    ' : '│   '));
+        flatten(n.children, depth + 1, childPrefix, out, expandedSet, key);
+      }
+    }
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  function renderTree(spec) {
+    var root = document.getElementById('tree-' + spec);
+    var s = state[spec];
+    var flat = [];
+    flatten(SPECS[spec], 0, '', flat, s.expanded, null);
+    s.flat = flat;
+    var html = '';
+    for (var i = 0; i < flat.length; i++) {
+      var f = flat[i];
+      var toggle = f.hasKids ? (f.isOpen ? '▾' : '▸') : '';
+      var toggleClass = f.hasKids ? '' : ' is-leaf';
+      html += '<div class="tree-row" data-i="' + i + '">'
+        + '<span class="tree-toggle' + toggleClass + '" data-toggle="' + i + '">' + toggle + '</span>'
+        + '<span class="tree-indent">' + escapeHtml(f.indent) + '</span>'
+        + '<span class="tree-icon">' + iconSvg(f.node.icon) + '</span>'
+        + '<span class="tree-name">' + escapeHtml(f.node.name) + '</span>'
+        + '<span class="tree-comment">' + escapeHtml(f.node.comment || '') + '</span>'
+        + '</div>';
+    }
+    root.innerHTML = html;
+    activate(spec, s.activeIdx || 0);
+    var rows = root.querySelectorAll('.tree-row');
+    rows.forEach(function(r) {
+      var i = parseInt(r.getAttribute('data-i'), 10);
+      r.addEventListener('mouseenter', function() { activate(spec, i); });
+      r.addEventListener('click', function(e) {
+        var t = e.target.closest('.tree-toggle');
+        if (t && !t.classList.contains('is-leaf')) {
+          var key = s.flat[i].key;
+          if (s.expanded.has(key)) s.expanded.delete(key);
+          else s.expanded.add(key);
+          renderTree(spec);
+        } else {
+          activate(spec, i);
+        }
+      });
     });
   }
 
-  function activate(i) {
-    var root = document.getElementById('tree');
-    var detail = document.getElementById('treeDetail');
-    if (!root || !detail) return;
-    var rows = root.querySelectorAll('.tree-row');
-    rows.forEach(function (r) { r.classList.remove('is-active'); r.removeAttribute('aria-selected'); });
-    if (rows[i]) {
-      rows[i].classList.add('is-active');
-      rows[i].setAttribute('aria-selected', 'true');
-    }
-    var n = TREE_DATA[i];
+  function activate(spec, i) {
+    var s = state[spec];
+    if (!s.flat || !s.flat[i]) return;
+    s.activeIdx = i;
+    var rows = document.getElementById('tree-' + spec).querySelectorAll('.tree-row');
+    rows.forEach(function(r) { r.classList.remove('is-active'); });
+    if (rows[i]) rows[i].classList.add('is-active');
+    var n = s.flat[i].node;
+    var detail = document.getElementById('detail-' + spec);
     detail.innerHTML =
         '<div class="kind">' + escapeHtml(n.kind) + '</div>'
       + '<h4>' + escapeHtml(n.heading) + '</h4>'
@@ -253,42 +520,26 @@
       + '<div class="detail-code">' + escapeHtml(n.code) + '</div>';
   }
 
-  function renderTree() {
-    var root = document.getElementById('tree');
-    if (!root) return;
-    var html = '';
-    for (var i = 0; i < TREE_DATA.length; i++) {
-      var n = TREE_DATA[i];
-      html += '<div class="tree-row" role="treeitem" tabindex="0" data-i="' + i + '"'
-           +  (i === 0 ? ' aria-selected="true"' : '') + '>'
-           +  '<span class="tree-prefix">' + n.indent + '</span>'
-           +  '<span class="tree-icon">' + iconSvg(n.icon) + '</span>'
-           +  '<span class="tree-name">' + n.name + '</span>'
-           +  '<span class="tree-comment">' + n.comment + '</span>'
-           +  '</div>';
-    }
-    root.innerHTML = html;
-    activate(0);
-
-    var rows = root.querySelectorAll('.tree-row');
-    rows.forEach(function (r) {
-      var idx = parseInt(r.getAttribute('data-i'), 10);
-      r.addEventListener('mouseenter', function () { activate(idx); });
-      r.addEventListener('click', function () { activate(idx); });
-      r.addEventListener('focus', function () { activate(idx); });
-      r.addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          var next = idx + (e.key === 'ArrowDown' ? 1 : -1);
-          if (next < 0) next = TREE_DATA.length - 1;
-          if (next >= TREE_DATA.length) next = 0;
-          rows[next].focus();
-        }
-      });
-    });
+  function initSpec(spec, initiallyExpanded) {
+    state[spec] = { expanded: new Set(initiallyExpanded || []), activeIdx: 0, flat: null };
+    renderTree(spec);
   }
 
-  document.addEventListener('DOMContentLoaded', renderTree);
+  // Pre-expand the top-level folder for each spec so users see content
+  initSpec('mosaic', ['hromada/#0']);
+  initSpec('stac', ['earth-imagery/#0']);
+  initSpec('oci', ['busybox-image/#0']);
+
+  // Tabs
+  var tabs = document.querySelectorAll('.tab');
+  var panes = document.querySelectorAll('.pane');
+  tabs.forEach(function(t) {
+    t.addEventListener('click', function() {
+      var target = t.getAttribute('data-tab');
+      tabs.forEach(function(x) { x.classList.toggle('is-active', x === t); });
+      panes.forEach(function(p) { p.classList.toggle('is-active', p.getAttribute('data-tab') === target); });
+    });
+  });
 })();
 </script>
 </body>
