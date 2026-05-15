@@ -5,53 +5,39 @@
 <title>Mosaic 0.9 — Working Overview</title>
 <style>
   :root {
-    --bg: #0f1115;
-    --fg: #e8e6e3;
-    --muted: #9ca3af;
-    --accent: #6ea8fe;
-    --accent2: #f5a97f;
-    --green: #8bd5ca;
-    --red: #ed8796;
-    --amber: #eed49f;
-    --border: #2a2e35;
-    --card: #181b22;
-    --code: #1f232b;
+    --bg: #0f1115; --fg: #e8e6e3; --muted: #9ca3af;
+    --accent: #6ea8fe; --accent2: #f5a97f; --green: #8bd5ca;
+    --red: #ed8796; --amber: #eed49f;
+    --border: #2a2e35; --card: #181b22; --code: #1f232b;
   }
   @media (prefers-color-scheme: light) {
     :root {
       --bg: #fafafa; --fg: #1a1a1a; --muted: #6b7280;
       --accent: #2563eb; --accent2: #c2410c; --green: #15803d;
-      --red: #b91c1c; --amber: #b45309; --border: #e5e7eb;
-      --card: #fff; --code: #f3f4f6;
+      --red: #b91c1c; --amber: #b45309;
+      --border: #e5e7eb; --card: #fff; --code: #f3f4f6;
     }
   }
   * { box-sizing: border-box; }
-  body {
-    background: var(--bg); color: var(--fg);
+  body { background: var(--bg); color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
-    font-size: 15px; line-height: 1.55;
-    margin: 0; padding: 0;
-  }
+    font-size: 15px; line-height: 1.55; margin: 0; padding: 0; }
   .layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1300px; margin: 0 auto; }
   @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } nav.toc { position: static !important; height: auto !important; } }
-  nav.toc {
-    position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
-    padding: 24px 16px; border-right: 1px solid var(--border); font-size: 13px;
-  }
+  nav.toc { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+    padding: 24px 16px; border-right: 1px solid var(--border); font-size: 13px; }
   nav.toc h3 { margin: 16px 0 4px; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
   nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 3px 8px; margin-left: -8px; border-radius: 4px; }
   nav.toc a:hover { background: var(--card); color: var(--accent); }
   main { padding: 32px 48px; max-width: 900px; }
   h1 { font-size: 28px; margin: 0 0 4px; }
   h2 { font-size: 22px; margin: 48px 0 8px; padding-top: 16px; border-top: 1px solid var(--border); }
-  h2:first-child { border-top: 0; padding-top: 0; }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
   h3 { font-size: 18px; margin: 28px 0 6px; color: var(--accent); }
   h4 { font-size: 15px; margin: 18px 0 4px; color: var(--accent2); }
   .meta { color: var(--muted); margin-bottom: 32px; font-size: 13px; }
-  .status-badge {
-    display: inline-block; padding: 1px 8px; border-radius: 10px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-  }
+  .status-badge { display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
   .locked { background: rgba(139, 213, 202, 0.15); color: var(--green); }
   .open { background: rgba(238, 212, 159, 0.15); color: var(--amber); }
   .deferred { background: rgba(156, 163, 175, 0.15); color: var(--muted); }
@@ -62,373 +48,248 @@
   code { background: var(--code); padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Menlo, monospace; font-size: 13px; }
   pre { background: var(--code); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
   blockquote { border-left: 3px solid var(--accent); padding: 8px 12px; margin: 16px 0; background: var(--card); color: var(--muted); border-radius: 0 6px 6px 0; }
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 16px 20px; margin: 16px 0;
-  }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
   .card h3 { margin-top: 0; }
+  .principle { border-left: 3px solid var(--green); padding-left: 16px; }
   .open-q { border-left: 3px solid var(--amber); padding-left: 16px; }
-  .locked-decision { border-left: 3px solid var(--green); padding-left: 16px; }
   .critical-flag { border-left: 3px solid var(--red); padding-left: 16px; background: rgba(237, 135, 150, 0.04); padding-top: 8px; padding-bottom: 8px; }
-  ul { padding-left: 22px; }
-  li { margin: 4px 0; }
+  ul { padding-left: 22px; } li { margin: 4px 0; }
   .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
 </style>
 </head>
-<body>
-<div class="layout">
-
+<body><div class="layout">
 <nav class="toc">
   <h3>Quick</h3>
-  <a href="#status">Status snapshot</a>
-  <a href="#philosophy">Philosophy (8 truths)</a>
+  <a href="#status">Status</a>
+  <a href="#principles">3 principles</a>
   <a href="#open">Open questions</a>
-
   <h3>Decisions</h3>
-  <a href="#architecture">Architecture (locked)</a>
+  <a href="#schema">Schema.org alignment</a>
+  <a href="#architecture">Architecture</a>
   <a href="#ecosystem">Ecosystem</a>
   <a href="#process">Process</a>
   <a href="#protection">Protection</a>
-
   <h3>Reference</h3>
-  <a href="#crosspoll">Cross-pollination (OSS)</a>
+  <a href="#crosspoll">Cross-pollination</a>
   <a href="#blind-spot">🔴 Big blind spot</a>
   <a href="#log">Decision log</a>
   <a href="#deferred">Deferred work</a>
   <a href="#ships">What 0.9 ships</a>
 </nav>
-
 <main>
 
 <h1>Mosaic 0.9 — Working Overview</h1>
-<div class="meta">Living document · Updated 2026-05-15 · Branch <code>0.9-realignment</code> · Read top-to-bottom or jump via the TOC</div>
+<div class="meta">Living document · Updated 2026-05-15 · Branch <code>0.9-realignment</code> · 13 commits · Read top-to-bottom or jump via the TOC</div>
 
 <h2 id="status">Status snapshot</h2>
 <table>
   <tr><th>Item</th><th>State</th></tr>
   <tr><td>Spec version</td><td>0.9 (draft)</td></tr>
-  <tr><td>Branch</td><td><code>0.9-realignment</code> — 8 commits</td></tr>
-  <tr><td>License (live on main)</td><td><span class="status-badge locked">live</span> CC BY 4.0 (spec) + Apache 2.0 (code) — PR #2</td></tr>
+  <tr><td>Branch</td><td><code>0.9-realignment</code> — 13 commits</td></tr>
+  <tr><td>License on main</td><td><span class="status-badge locked">live</span> CC BY 4.0 (spec) + Apache 2.0 (code) — PR #2</td></tr>
   <tr><td>Trademark</td><td>"Mosaic", "MIP" — Slava Solutions</td></tr>
-  <tr><td>Conformance</td><td>33/34 (pre-realignment)</td></tr>
-  <tr><td>Production consumers</td><td>Zero. <code>clear-ucc</code> live URL is on legacy code, not Mosaic format</td></tr>
-  <tr><td>Risk of breaking</td><td><span class="status-badge locked">none</span> Break freely</td></tr>
+  <tr><td>Production consumers</td><td>Zero. Break freely</td></tr>
 </table>
 
-<h2 id="philosophy">Philosophy — 8 foundational claims</h2>
-<p>The spec derives from these. Plain language, no MUST/MAY.</p>
+<h2 id="principles">Principles — 3 foundational claims</h2>
+<p>The spec derives from these. Plain language, no MUST/MAY. See <code>PRINCIPLES.md</code> for the canonical file.</p>
 
-<div class="card locked-decision">
+<div class="card principle">
   <h3>1. The folder is the website</h3>
-  <p>The filesystem is the source of truth; nothing else is canonical.</p>
+  <p>The filesystem is the source of truth. Files are records (<code>.json</code> = structured, <code>.md</code> = prose, anything else = binary/non-text content). Folders group records into collections.</p>
 </div>
 
-<div class="card locked-decision">
-  <h3>2. <code>mosaic.json</code> is the manifest</h3>
-  <p>One special file at the root identifies the folder as a Mosaic site and declares its shape — types, collections, redirects, tokens.</p>
+<div class="card principle">
+  <h3>2. Refs link records</h3>
+  <p>One <code>ref:</code> prefix with three anchoring modes: cascade lookup (default — walks the parent chain outward), <code>/</code> for absolute from root, <code>./</code> for explicit relative. Deeper-wins cascade plus deep merge: same-named records placed deeper override shallower ones; objects merge by field, arrays replace whole. Cycles are free.</p>
 </div>
 
-<div class="card open-q">
-  <h3>3. Files are records, folders are collections <span class="status-badge open">open</span></h3>
-  <p>Records carry data in JSON; markdown and other content is referenced from them. Folders group records.</p>
-  <h4>Open: does "all root folders = collections" hold up?</h4>
-  <p>The <code>.mosaic</code> zip layout showed an apparent inversion: images have optional sidecars, collection records have required JSON + optional sidecars.</p>
+<div class="card principle">
+  <h3>3. Forward-safe</h3>
+  <p>Engines decide URLs. Writers preserve unknown fields. Extensions use the <code>x-</code> marker (fields as <code>x-&lt;ns&gt;.&lt;key&gt;</code>; sidecar files as <code>&lt;slug&gt;.x-&lt;ns&gt;.json</code>). Types MAY declare an optional <code>@type</code> field for schema.org alignment — see Schema.org section below.</p>
+</div>
+
+<blockquote>Reduced from 8 truths to 3 principles. Everything cut became derived rules in SPEC.md (file extension determines role; <code>mosaic.json</code> is the manifest; routing is declared by the <code>pages</code> collection; validation has tiered severity). Same content, fewer claims to memorize.</blockquote>
+
+<h2 id="schema">Schema.org alignment — optional, type-level</h2>
+<p>Types in <code>mosaic.json#types</code> MAY declare an <code>@type</code> field naming a schema.org type. Example:</p>
+<pre><code>"types": {
+  "TeamMember": { "@type": "Person",  "fields": {...} },
+  "NewsItem":   { "@type": "Article", "fields": {...} }
+}</code></pre>
+
+<div class="card">
+  <h3>What this gives you</h3>
   <ul>
-    <li><b>Option A (recommended):</b> all root folders are collections. The "inversion" is the SAME rule applied to different content types — the file (binary or JSON) IS the record; the JSON sidecar is optional metadata.</li>
-    <li><b>Option B:</b> split content types — pages/, images/ reserved with own conventions.</li>
-  </ul>
-  <p><b>My pick:</b> A. Keeps universal composition. The "inversion" is cosmetic, not structural.</p>
-</div>
-
-<div class="card open-q">
-  <h3>4. JSON is the only structured channel <span class="status-badge open">open</span></h3>
-  <p>Markdown is prose; structured fields live in JSON.</p>
-  <h4>Open: frontmatter support?</h4>
-  <ul>
-    <li><b>Option A:</b> Spec stays silent. Engines may parse frontmatter as extension; not portable.</li>
-    <li><b>Option B:</b> Hard ban. Migrator tool extracts frontmatter to JSON.</li>
-    <li><b>Option C (your latest):</b> "Not native now, future MIP."</li>
-  </ul>
-  <p><b>My pick:</b> A + C combined. Spec silent for 0.9. Engines may parse; tools may convert. Future MIP placeholder filed.</p>
-</div>
-
-<div class="card open-q">
-  <h3>5. Refs link records <span class="status-badge locked">mostly locked</span></h3>
-  <p>One <code>ref:</code> prefix, three anchors: cascade (default), <code>/</code> absolute, <code>./</code> explicit relative. Selectors restored: <code>ref:tokens@color.accent</code> works.</p>
-  <ul>
-    <li><span class="status-badge locked">locked</span> Unified <code>x-</code> namespace marker everywhere (fields AND sidecar filenames)</li>
-    <li><span class="status-badge open">open</span> Cascade + locale interaction order — needs concrete examples; defer</li>
-    <li><span class="status-badge critical">critical</span> Ref identity (rename safety) — see <a href="#blind-spot">blind spot</a></li>
+    <li>Engines that emit JSON-LD use <code>@type</code> to mark records semantically. Free SEO + AI discoverability.</li>
+    <li>Engines that don't care just ignore the field.</li>
+    <li>Authors who don't care leave it off; nothing breaks.</li>
   </ul>
 </div>
 
-<div class="card locked-decision">
-  <h3>6. Routing is declared, not derived</h3>
-  <p>Pages-collection paths become URLs; other collections route only when a page mounts them.</p>
+<div class="card">
+  <h3>What we explicitly did NOT do</h3>
+  <ul>
+    <li><strong>No "profile" concept.</strong> No site-level alignment modes. Profiles add validator complexity and force authors to pick a tier; we dropped them.</li>
+    <li><strong>No required schema.org field names.</strong> Authors MAY align field names by convention (<code>name</code> for Person, <code>headline</code> for Article); spec doesn't require it.</li>
+  </ul>
 </div>
 
-<div class="card locked-decision">
-  <h3>7. Deeper scope wins (cascade)</h3>
-  <p>Cascade walks parent chain. Objects merge field-by-field; arrays replace whole.</p>
-  <h4>You asked: what's the problem? <code>/</code> exists as escape hatch.</h4>
-  <p>Right — escape hatches handle the "I want exact path" case. The remaining concern was silent debugging hell (closer-wins shadowing breaks pages invisibly). Mitigation: <code>mosaic.cascade.shadow</code> warning fires whenever cascade resolves non-root. Authors see the cascade graph; tooling surfaces shadowing.</p>
-</div>
+<p>Three layers exist conceptually but aren't formalized:</p>
+<ol>
+  <li><strong>Default</strong> — no <code>@type</code>, engines emit plain HTML.</li>
+  <li><strong>Recommended</strong> — types declare <code>@type</code>. Engines that support JSON-LD emit it. SEO benefit, low cost.</li>
+  <li><strong>Advanced</strong> — authors align field names too. Schema.org-aware tools get full structured data.</li>
+</ol>
 
-<div class="card locked-decision">
-  <h3>8. Forward-safe</h3>
-  <p>Engines decide URLs; writers preserve unknown fields; extensions use <code>x-</code> namespace (fields and sidecars). On-disk conflict emits <code>MOS-CONFLICT</code> markers.</p>
-</div>
+<p>The optional <code>@type</code> field on type declarations is the spec's only hook. Everything else is engine and author choice.</p>
 
 <h2 id="open">Open questions (the live pile)</h2>
 <table>
-  <tr><th>#</th><th>Question</th><th>Status</th><th>My pick</th></tr>
-  <tr><td>1</td><td>Frontmatter — silent / ban / future MIP?</td><td><span class="status-badge open">open</span></td><td>Silent + future-MIP placeholder</td></tr>
-  <tr><td>2</td><td>Cascade + locale interaction order?</td><td><span class="status-badge open">open</span></td><td>Needs concrete examples; defer</td></tr>
-  <tr><td>3</td><td>Core in spec, or separate impl?</td><td><span class="status-badge open">open</span></td><td>Separate. Core is one of several engines</td></tr>
-  <tr><td>4</td><td>MosaicDB direction — what is it?</td><td><span class="status-badge open">open</span></td><td>General filesystem-backed engine (R2 OR local FS). <code>@mosaic/db</code></td></tr>
-  <tr><td>5</td><td>Index requires CLI tooling?</td><td><span class="status-badge open">open</span></td><td>No. Hand-authorable. CLI speeds it up. Index is engine OUTPUT, not requirement</td></tr>
-  <tr><td>6</td><td>Native folder mounting vs <code>collection-list</code>?</td><td><span class="status-badge locked">closed</span></td><td>Section JSON stays. Folder marker would duplicate</td></tr>
-  <tr><td>7</td><td>Compressed collection format?</td><td><span class="status-badge deferred">deferred</span></td><td>0.10+ MIP candidate</td></tr>
-  <tr><td>8</td><td>Locale-folder pattern in spec?</td><td><span class="status-badge deferred">deferred</span></td><td>Engine-side. MIP-0014 filename suffix is canonical</td></tr>
-  <tr><td>9</td><td>Decision-tree visualization (mermaid sucks)?</td><td><span class="status-badge open">open</span></td><td>Use this document as source of truth; drop mermaid</td></tr>
-  <tr><td>10</td><td>🔴 Ref identity & rename safety</td><td><span class="status-badge critical">critical</span></td><td>See <a href="#blind-spot">blind spot</a> below</td></tr>
+  <tr><th>#</th><th>Question</th><th>Status</th><th>Pick</th></tr>
+  <tr><td>1</td><td>Frontmatter — silent / ban / future MIP?</td><td><span class="status-badge locked">closed</span></td><td>Silent + future-MIP placeholder</td></tr>
+  <tr><td>2</td><td>Cascade + locale interaction order?</td><td><span class="status-badge open">open</span></td><td>Defer — needs concrete examples</td></tr>
+  <tr><td>3</td><td>Core in spec or separate?</td><td><span class="status-badge locked">closed</span></td><td>Separate; one of several engines</td></tr>
+  <tr><td>4</td><td>MosaicDB direction?</td><td><span class="status-badge deferred">post-1.0</span></td><td>General FS-backed engine; <code>@mosaic/db</code></td></tr>
+  <tr><td>5</td><td>Index requires CLI?</td><td><span class="status-badge locked">closed</span></td><td>No — hand-authorable; CLI speeds it up</td></tr>
+  <tr><td>6</td><td>Native folder mount vs collection-list?</td><td><span class="status-badge locked">closed</span></td><td>Section JSON stays</td></tr>
+  <tr><td>7</td><td>Compressed collection format?</td><td><span class="status-badge deferred">0.10+</span></td><td>Future MIP candidate</td></tr>
+  <tr><td>8</td><td>Locale-folder pattern in spec?</td><td><span class="status-badge deferred">0.10+</span></td><td>Engine-side; MIP-0014 filename suffix is canonical</td></tr>
+  <tr><td>9</td><td>Decision-tree viz (mermaid sucks)?</td><td><span class="status-badge locked">closed</span></td><td>This doc IS the structured plan</td></tr>
+  <tr><td>10</td><td>🔴 Ref identity & rename safety</td><td><span class="status-badge critical">critical</span></td><td>MIP-0016 candidate — see blind spot</td></tr>
+  <tr><td>11</td><td>Profiles vs simple @type?</td><td><span class="status-badge locked">closed</span></td><td>Dropped profiles; @type field optional only</td></tr>
 </table>
 
 <h2 id="architecture">Architecture decisions (locked)</h2>
-
-<div class="card locked-decision">
-  <h3>A1. <code>.mosaic</code> = single distribution format (zip-based)</h3>
-  <p>EPUB-style zip with <code>.mosaic</code> extension. Tools open as zip; users see one file. No light/heavy split — one canonical format.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A2. JSON-only structural index</h3>
-  <p>Every record's structural entry is JSON. MD = content referenced from it (optional auto-link if same-slug). Bare MD is engine charity, warning emitted.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A3. Cross-engine round-trip testing</h3>
-  <p>Every conformance fixture is validated TWO ways:</p>
-  <ol>
-    <li>Direct: folder → emit index → compare to expected</li>
-    <li>Round-trip: folder → zip to <code>.mosaic</code> → unzip → emit index → compare</li>
-  </ol>
-  <p>Indexes must match. Catches: zip metadata leaks, path normalization, locale parsing, file ordering, Unicode normalization.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A4. Cascade lookup walks parent chain (no carveouts)</h3>
-  <p>Page records and globals coexist; cascade naturally never crosses into sibling collections.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A5. Sidecar override = cascade applied to globals</h3>
-  <p>Same mechanism. No separate "override" spec rule needed.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A6. Unified <code>x-</code> namespace marker</h3>
-  <p>Fields AND sidecar filenames use <code>x-</code>. <code>x-astro.localized</code> for fields, <code>header.x-clearcms.json</code> for sidecars.</p>
-</div>
-<div class="card locked-decision">
-  <h3>A7. <code>@</code> selector restored to ref grammar</h3>
-  <p>DTCG tokens need it: <code>ref:tokens@color.accent</code>.</p>
-</div>
+<div class="card principle"><h3>A1. <code>.mosaic</code> = single distribution format (zip-based)</h3><p>EPUB-style zip with <code>.mosaic</code> extension. One canonical format.</p></div>
+<div class="card principle"><h3>A2. JSON-only structural index</h3><p>Every record's structural entry is JSON. MD = content referenced from it (optional auto-link if same-slug). Bare MD is engine charity, warning emitted.</p></div>
+<div class="card principle"><h3>A3. Cross-engine round-trip testing</h3><p>Every conformance fixture validated direct AND zip+unzip → emit index → compare. Catches zip metadata leaks, path normalization, locale parsing, file ordering, Unicode normalization.</p></div>
+<div class="card principle"><h3>A4. Cascade walks parent chain (no carveouts)</h3><p>Pages and globals coexist; cascade naturally never crosses into sibling collections.</p></div>
+<div class="card principle"><h3>A5. Sidecar override = cascade applied to globals</h3><p>Same mechanism. No separate "override" spec rule needed.</p></div>
+<div class="card principle"><h3>A6. Unified <code>x-</code> namespace marker</h3><p>Fields AND sidecar filenames use <code>x-</code>. <code>x-astro.localized</code> for fields, <code>header.x-clearcms.json</code> for sidecars.</p></div>
+<div class="card principle"><h3>A7. <code>@</code> selector in ref grammar</h3><p>DTCG tokens need it: <code>ref:tokens@color.accent</code>.</p></div>
+<div class="card principle"><h3>A8. JSON Schema for record field types</h3><p><code>mosaic.json#types</code> uses JSON Schema instead of bespoke type shape. Free tooling, less reinvention.</p></div>
 
 <h2 id="ecosystem">Ecosystem</h2>
 <table>
   <tr><th>Layer</th><th>Project</th><th>Role</th><th>License</th></tr>
-  <tr><td>Spec</td><td><code>slavasolutions/mosaic</code> (this)</td><td>The format</td><td>CC BY 4.0 + Apache 2.0</td></tr>
-  <tr><td>Engine SDK</td><td><code>@mosaic/core</code></td><td>Walker / parser / validator / index</td><td>Apache 2.0</td></tr>
+  <tr><td>Spec</td><td><code>slavasolutions/mosaic</code></td><td>The format</td><td>CC BY 4.0 + Apache 2.0</td></tr>
+  <tr><td>Engine SDK</td><td><code>@mosaic/core</code></td><td>Walker / parser / validator</td><td>Apache 2.0</td></tr>
   <tr><td>Engine CLI</td><td><code>@mosaic/cli</code></td><td>Terminal commands</td><td>Apache 2.0</td></tr>
   <tr><td>Adapter</td><td><code>@mosaic/astro</code></td><td>Astro integration</td><td>Apache 2.0</td></tr>
-  <tr><td>Adapter (future)</td><td><code>@mosaic/next</code></td><td>Next adapter</td><td>Apache 2.0</td></tr>
-  <tr><td>App</td><td><code>mosaic-explorer</code> (separate repo)</td><td>POC editor/viewer; Bun binary + NPM</td><td>MIT or Apache 2.0</td></tr>
+  <tr><td>Future</td><td><code>@mosaic/next</code></td><td>Next adapter</td><td>Apache 2.0</td></tr>
+  <tr><td>App</td><td><code>mosaic-explorer</code> (separate repo)</td><td>POC editor/viewer</td><td>MIT or Apache 2.0</td></tr>
   <tr><td>App (future)</td><td><code>mosaic-site</code> (separate repo)</td><td>Dogfood website</td><td>MIT</td></tr>
-  <tr><td>Engine variant (future)</td><td><code>@mosaic/db</code> or <code>mosaic-edge</code></td><td>Generic FS-backed engine (local, R2, S3)</td><td>Apache 2.0</td></tr>
-  <tr><td>Downstream</td><td><code>clearcms/clear</code></td><td>Full CMS on top</td><td>Apache 2.0 + proprietary UX</td></tr>
+  <tr><td>Future engine</td><td><code>@mosaic/db</code></td><td>FS-backed engine (local / R2 / S3)</td><td>Apache 2.0</td></tr>
+  <tr><td>Downstream</td><td><code>clearcms/clear</code></td><td>Full CMS</td><td>Apache 2.0 + proprietary UX</td></tr>
 </table>
-
-<div class="card open-q">
-  <h3>Open Q3: Core in spec or separate?</h3>
-  <p><b>My pick: separate.</b> Spec defines what's a valid Mosaic site. Core is one reference implementation. Other engines (Go, Rust, Python) should be free to reimplement without vendoring our JS code.</p>
-</div>
-
-<div class="card open-q">
-  <h3>Open Q4: MosaicDB direction</h3>
-  <p>You clarified: not R2-only. General engine to bolt onto any filesystem.</p>
-  <ul>
-    <li><code>@mosaic/db</code> = a stateful engine holding a Mosaic site; exposes read/write/query API</li>
-    <li>Backend agnostic — local FS, R2, S3, any path-keyed storage</li>
-    <li>Built on <code>@mosaic/core</code></li>
-    <li>Could BE the viewer/editor's backend (Studio = UI on top of <code>@mosaic/db</code>)</li>
-    <li>Clear could compose <code>@mosaic/db</code> + custom UX</li>
-  </ul>
-  <p>Post-1.0 territory. File in V1.md futures.</p>
-</div>
 
 <h2 id="process">Process (locked)</h2>
 <ul>
-  <li><b>Versioning rule:</b> each non-discarded session = one CHANGELOG entry = one version step. Patch/minor/major. Pre-1.0 minor allowed to break.</li>
-  <li><b>MIP process:</b> single folder <code>mips/</code>, Rust-style template, sequential numbering. Spec changes AND process decisions both land here.</li>
-  <li><b>Skills</b> in <code>skills/</code> — release, status, session-start, session-end, propose-mip, MIP template.</li>
-  <li><b>Three layers, no overlap:</b> PHILOSOPHY (claims) / SPEC (rules) / MIPs (decisions). Same fact in two layers = bug, delete one.</li>
+  <li><strong>Versioning rule:</strong> each non-discarded session = one CHANGELOG entry = one version step. Patch/minor/major.</li>
+  <li><strong>MIP process:</strong> single folder <code>mips/</code>, Rust-style template, sequential numbering.</li>
+  <li><strong>Skills</strong> in <code>skills/</code> — release, status, session-start, session-end, propose-mip.</li>
+  <li><strong>Three layers, no overlap:</strong> PRINCIPLES (claims) / SPEC (rules) / MIPs (decisions).</li>
 </ul>
 
 <h2 id="protection">Protection (live on main, PR #2)</h2>
 <ul>
-  <li>CC BY 4.0 for spec text (attribution required)</li>
-  <li>Apache 2.0 for code (patent grant)</li>
-  <li>Trademark on Mosaic + MIP — Slava Solutions</li>
+  <li>CC BY 4.0 for spec text · Apache 2.0 for code · Trademark on Mosaic + MIP (Slava Solutions)</li>
   <li>NOTICE, TRADEMARK, SECURITY, CONTRIBUTING all shipped</li>
-  <li><span class="status-badge open">pending</span> USPTO trademark filings (~$3-6k with attorney; recommended)</li>
-  <li>Defensive publication via git history + npm publishes; supplement with Software Heritage + Zenodo DOI when ready</li>
+  <li><span class="status-badge open">pending</span> USPTO trademark filings (~$3-6k with attorney)</li>
 </ul>
 
 <h2 id="crosspoll">Cross-pollination — OSS in other domains</h2>
-
 <table>
-  <tr><th>Project</th><th>Domain</th><th>License</th><th>What it shares with Mosaic</th></tr>
-  <tr><td>OCI Image Layout</td><td>Containers</td><td>Apache 2.0</td><td>Directory spec with <code>index.json</code> + content-addressed blobs + JSON descriptors</td></tr>
-  <tr><td>BagIt (RFC 8493)</td><td>Archival</td><td>Public domain</td><td>Folder + manifest + <code>data/</code> tree + fixity refs; portable across tools</td></tr>
-  <tr><td>EPUB 3</td><td>Ebooks</td><td>BSD-style W3C</td><td>Zipped folder + container.xml manifest + cross-document refs</td></tr>
-  <tr><td>Frictionless Data Package</td><td>Open data</td><td>MIT</td><td><code>datapackage.json</code> + CSV/JSON resources + schema refs + extensible profiles</td></tr>
-  <tr><td><b>STAC</b> 🌟</td><td>Geospatial</td><td>Apache 2.0</td><td>Catalog → Collection → Item tree; typed <code>rel</code> refs; cascade from catalog down</td></tr>
-</table>
-
-<div class="card">
-  <h3>Closest analog: STAC</h3>
-  <p>Same shape (manifest + nested folders + JSON records + typed cross-refs + cascade). Same maturity arc (community spec, multiple impls, pre-1.0 → 1.0 took years). Same dual concern of "spec vs engines."</p>
-  <p><b>If you read one project end-to-end, read STAC.</b></p>
-</div>
-
-<div class="card">
-  <h3>Non-obvious sibling: Nix Flakes</h3>
-  <p>Different surface (code packaging), structurally identical: manifest at folder root declares inputs, refs resolve to other folder-shapes, lockfile pins the cascade. Worth studying for <b>ref resolution and pinning</b> — the hardest unsolved problem in any cross-reference system.</p>
-</div>
-
-<h3>Lessons to borrow</h3>
-<table>
-  <tr><th>From</th><th>Lesson</th></tr>
-  <tr><td>OCI</td><td>Pin a canonical on-disk layout in one short section — file names, required dirs, media-type field on every JSON. 20 lines of spec</td></tr>
-  <tr><td>BagIt</td><td>Ship a <i>fixity</i> convention — <code>manifest-sha256.txt</code> listing files + checksums. Verify integrity without an engine</td></tr>
-  <tr><td>EPUB 3</td><td>Separate <i>spec core</i> from <i>profiles/extensions</i> explicitly. Keeps the core small</td></tr>
-  <tr><td>Frictionless Data</td><td>Adopt a <i>schema sub-spec</i> pattern — one tiny companion spec records can opt into for field-level typing</td></tr>
-  <tr><td>STAC</td><td>Adopt <i>typed link relations</i> — <code>rel: parent</code>, <code>rel: child</code>, <code>rel: self</code>, <code>rel: derived_from</code>. Named relationships, not just pointers</td></tr>
+  <tr><th>Project</th><th>Domain</th><th>What it shares</th></tr>
+  <tr><td><strong>STAC</strong> 🌟</td><td>Geospatial</td><td>Closest mirror — catalog → collection → item; typed <code>rel</code> refs; cascade</td></tr>
+  <tr><td>OCI Image Layout</td><td>Containers</td><td>Directory + <code>index.json</code> + content-addressed blobs</td></tr>
+  <tr><td>BagIt</td><td>Archival</td><td>Folder + manifest + fixity refs</td></tr>
+  <tr><td>EPUB 3</td><td>Ebooks</td><td>Zipped folder + container.xml manifest</td></tr>
+  <tr><td>Frictionless Data Package</td><td>Open data</td><td><code>datapackage.json</code> + resources + schemas</td></tr>
+  <tr><td>Nix Flakes</td><td>Code packaging</td><td>Manifest + ref pinning via lockfile (worth studying for ref identity)</td></tr>
 </table>
 
 <h2 id="blind-spot">🔴 Biggest blind spot: ref identity & rename safety</h2>
-
 <div class="card critical-flag">
-  <p>Every adjacent project had to answer "what does a ref actually point at, and how do I resolve it when the target moves or the folder is copied somewhere else?"</p>
+  <p>Every adjacent project solved "what does a ref point at when the target moves?" — OCI: content-addressed digests; BagIt: checksums; STAC: relative+absolute URIs with rel types; Frictionless: explicit path rules; Nix: lock-pinned input refs.</p>
+  <p><strong>Cascade answers merge semantics, not identity.</strong> If refs are folder paths today, the spec is one rename away from breaking.</p>
+  <h4>Q10 options</h4>
   <ul>
-    <li>OCI: content-addressed digests</li>
-    <li>BagIt: checksums</li>
-    <li>STAC: relative + absolute URIs with <code>rel</code> types</li>
-    <li>Frictionless: <code>path</code> with explicit relative/remote rules</li>
-    <li>Nix Flakes: lock-pinned input refs</li>
+    <li><strong>A:</strong> Refs path-based; renames break refs; <code>mosaic.ref.unresolved</code> catches via validation</li>
+    <li><strong>B (recommended):</strong> Add optional stable <code>$id</code> to records; refs can point at <code>$id</code> OR path; engines resolve either</li>
+    <li><strong>C:</strong> Full content addressing (OCI-style hash); immutable but verbose refs</li>
   </ul>
-  <p><b>Cascade answers MERGE semantics; not IDENTITY.</b> If Mosaic's refs are folder paths today, the spec is one rename away from breaking. No story yet for:</p>
-  <ul>
-    <li>Refs across two Mosaic folders on the same disk</li>
-    <li>Refs in a planned R2 cloud variant where folders are distributed</li>
-    <li>What happens when <code>team/anna</code> renames to <code>team/anna-k</code> — every ref silently breaks</li>
-  </ul>
-
-  <h4>Open Q10 — options for ref identity</h4>
-  <ul>
-    <li><b>A:</b> Refs stay path-based; renames break refs; <code>mosaic.ref.unresolved</code> catches via validation</li>
-    <li><b>B (recommended):</b> Add optional stable <code>$id</code> to records; refs can point at <code>$id</code> OR path; engines resolve either; rename-safe</li>
-    <li><b>C:</b> Full content addressing (OCI-style hash); immutable but verbose refs</li>
-  </ul>
-  <p><b>My pick: B.</b> Path-based default for ergonomics; identity-based escape hatch for stability. Worth a MIP-0016.</p>
+  <p><strong>Pick:</strong> B. Worth a MIP-0016. Path-based default for ergonomics; identity-based escape hatch.</p>
 </div>
 
-<h2 id="log">Decision log (this session, chronological)</h2>
+<h2 id="log">Decision log (this session)</h2>
 <ol>
-  <li>Renamed TRUTHS → PHILOSOPHY (file + concept)</li>
-  <li>Reduced 17 axioms to 7 hybrid-format claims (heading + 1 explainer sentence)</li>
-  <li>Added 8th claim "JSON only structured channel" after devil's-advocate review</li>
-  <li>Hoisted <code>SPEC.md</code> from <code>spec/</code> subdir to root</li>
-  <li>Folded OVERVIEW.md content into README</li>
-  <li>Archived ARCHITECTURE.md + BUILD_REPORT.md to <code>archive/0.8.1/</code></li>
-  <li>Kept name "MIP" (no rename to RFC); adopted Rust-style template</li>
-  <li>Reconstructed CHANGELOG with placeholders for 0.0–0.5</li>
-  <li>Added <code>skills/</code> folder with 5 process docs + index</li>
-  <li>Versioning rule = session-equals-step (in CONTRIBUTING + AGENTS)</li>
-  <li>Drop "singleton" / "global" term; everything at root is just a record</li>
-  <li>Drop <code>collections/</code> parent; collections directly at root</li>
-  <li>Pages is just a collection routed by engine convention</li>
-  <li>Cascade walks parent chain (no special carveouts)</li>
-  <li>Sidecar override = cascade applied to globals (same mechanism)</li>
-  <li>Single ref grammar: <code>ref:</code> + three anchors (cascade / <code>/</code> / <code>./</code>)</li>
-  <li><code>@</code> selector preserved (restored after near-drop)</li>
-  <li>Unified <code>x-</code> namespace marker (fields AND sidecars)</li>
-  <li>JSON is always the structural index; MD is referenced content</li>
-  <li>Smart-default auto-link: <code>&lt;slug&gt;.md</code> becomes body of <code>&lt;slug&gt;.json</code> if no body field</li>
-  <li><code>.mosaic</code> = zip with renamed extension (EPUB-style); one canonical format</li>
-  <li><code>mosaic.cascade.shadow</code> warning on cross-folder cascade resolution</li>
-  <li>Cross-engine round-trip testing as standard conformance pattern</li>
-  <li><code>MOS-CONFLICT</code> marker convention for on-disk conflicts</li>
-  <li>Frontmatter = silent in spec; future MIP placeholder</li>
-  <li>Copyright holder = Slava Solutions (not personal name)</li>
-  <li>License migrated CC0 → CC BY 4.0 + Apache 2.0 (live on main, PR #2)</li>
-  <li>Trademark policy added (Mosaic + MIP)</li>
-  <li>NOTICE + SECURITY + CONTRIBUTING shipped</li>
+  <li>Renamed TRUTHS → PHILOSOPHY → PRINCIPLES</li>
+  <li>Reduced 17 axioms → 3 foundational claims</li>
+  <li>Hoisted SPEC.md to root</li>
+  <li>Archived 0.8.1 docs</li>
+  <li>Adopted Rust-style MIP template</li>
+  <li>Reconstructed CHANGELOG (placeholders for 0.0–0.5)</li>
+  <li>Added skills/ folder</li>
+  <li>Versioning rule = session-equals-step</li>
+  <li>Drop "singleton"/"global" — root files are records</li>
+  <li>Drop <code>collections/</code> parent</li>
+  <li>Pages is just a collection</li>
+  <li>Cascade walks parent chain</li>
+  <li>Sidecar override = cascade applied to globals</li>
+  <li>Single <code>ref:</code> grammar with three anchors + <code>@</code> selector</li>
+  <li>Unified <code>x-</code> namespace marker</li>
+  <li>JSON-only structural index</li>
+  <li>Smart auto-link (slug match) for paired files</li>
+  <li><code>.mosaic</code> = zip with renamed extension</li>
+  <li><code>mosaic.cascade.shadow</code> warning</li>
+  <li>Cross-engine round-trip testing</li>
+  <li><code>MOS-CONFLICT</code> marker for on-disk conflicts</li>
+  <li>Frontmatter = silent + future-MIP placeholder</li>
+  <li>License migrated CC0 → CC BY 4.0 + Apache 2.0 (live, PR #2)</li>
+  <li>Trademark: Mosaic + MIP = Slava Solutions</li>
+  <li>JSON Schema for <code>mosaic.json#types</code> (instead of bespoke shape)</li>
+  <li>File extension determines role (universal rule)</li>
+  <li>Dropped profile concept; optional <code>@type</code> field at type-declaration level for schema.org alignment</li>
 </ol>
 
 <h2 id="deferred">Deferred work</h2>
 <ul>
-  <li><span class="status-badge deferred">0.10+</span> Compressed collection format (single-file collections) → future MIP</li>
-  <li><span class="status-badge deferred">0.10+</span> Images-as-records full lift → future MIP</li>
-  <li><span class="status-badge deferred">0.10+</span> Locale-folder pattern → paired with locale-prefix routing</li>
+  <li><span class="status-badge deferred">0.10+</span> Compressed collection format</li>
+  <li><span class="status-badge deferred">0.10+</span> Locale-folder pattern (paired with locale-prefix routing)</li>
   <li><span class="status-badge deferred">0.10+</span> Routing collection name override</li>
   <li><span class="status-badge deferred">never</span> BSON / binary-JSON support — JSON text is the spec channel</li>
   <li><span class="status-badge deferred">process</span> USPTO trademark filings</li>
   <li><span class="status-badge deferred">0.11+</span> <code>mosaic-explorer</code> separate repo</li>
   <li><span class="status-badge deferred">post-1.0</span> <code>mosaic-edge</code> / <code>@mosaic/db</code></li>
-  <li><span class="status-badge deferred">0.11+</span> <code>mosaic-site</code> dogfood</li>
+  <li><span class="status-badge deferred">post-1.0</span> STAC-style <code>rel</code> link types on refs (IANA-aligned)</li>
+  <li><span class="status-badge deferred">post-1.0</span> Frictionless Data Package profile</li>
+  <li><span class="status-badge deferred">post-1.0</span> W3C Community Group submission</li>
 </ul>
 
 <h2 id="ships">What 0.9 actually ships</h2>
-<div class="card locked-decision">
-  <h3>Shipping in 0.9 (when <code>0.9-realignment</code> merges to main)</h3>
+<div class="card principle">
+  <h3>Shipping in 0.9</h3>
   <ul>
-    <li>7 of 8 truths in PHILOSOPHY.md (8th = frontmatter, open)</li>
-    <li>Renamed/restructured docs at root (PHILOSOPHY, SPEC, CHANGELOG, CONTRIBUTING, AGENTS, V1)</li>
+    <li>3 principles in PRINCIPLES.md</li>
+    <li>Renamed/restructured docs at root</li>
     <li>Archived 0.8.1 docs</li>
     <li>Skills folder + MIP template</li>
-    <li>CHANGELOG reconstructed back to 0.0 (placeholders for pre-0.7)</li>
+    <li>CHANGELOG reconstructed</li>
     <li>License + trademark + NOTICE + SECURITY (already live via PR #2)</li>
   </ul>
 </div>
 <div class="card open-q">
   <h3>NOT shipping in 0.9 (deferred to 0.10)</h3>
   <ul>
-    <li>SPEC.md rewrite to reflect cascade + unified refs + <code>x-</code> + new philosophy</li>
+    <li>SPEC.md rewrite reflecting all locked decisions</li>
     <li><code>tools/</code> → <code>packages/</code> rename</li>
-    <li><code>record</code> → <code>entry</code> rename (still on the table)</li>
-    <li>100-site test corpus (already running as background work)</li>
+    <li><code>record</code> → <code>entry</code> rename (if still wanted)</li>
+    <li>100-site test corpus (background work in progress)</li>
   </ul>
 </div>
 
-<h2>Open answers to questions raised this session</h2>
+<div class="footer">Last updated 2026-05-15 · Generated from STATE.md · Canonical source: <code>STATE.md</code></div>
 
-<div class="card">
-  <h4>What is BSON, and is it useful?</h4>
-  <p>BSON = Binary JSON. How MongoDB stores documents. Faster to parse, includes types JSON doesn't (Date, ObjectId, Binary). <b>Not useful for Mosaic spec</b> — design is filesystem-native + human-readable. Binary formats break "open in any text editor." Engines that want fast in-memory representation parse JSON to whatever internal shape they want; implementation choice.</p>
-</div>
-
-<div class="card">
-  <h4>Should you NEED CLI to make the index?</h4>
-  <p>No. Index is engine OUTPUT, not spec requirement. Engines emit it. CLI is one way; hand-authoring possible. Spec documents the index shape (§7); any tool can emit/consume it.</p>
-</div>
-
-<div class="card">
-  <h4>Mermaid sucks for visualization — what to use?</h4>
-  <p>Drop it for decision trees. THIS document is the structured plan. Each section is a node; status emoji shows state; cross-references inline by section. Plain text/HTML scales and renders everywhere. The visual hierarchy in this HTML version (cards, badges, TOC) does the work mermaid couldn't.</p>
-</div>
-
-<div class="footer">
-  Last updated 2026-05-15 · Generated as STATE.md + STATE.html in the <code>0.9-realignment</code> worktree · For the canonical source see <code>STATE.md</code>
-</div>
-
-</main>
-</div>
-</body>
-</html>
+</main></div></body></html>

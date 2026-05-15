@@ -20,15 +20,9 @@ Refs resolved at any depth follow **deeper-wins cascade plus deep-merge**: a sam
 
 ## Forward-safe
 
-Engines decide URLs; writers preserve unknown fields; extensions namespace themselves with the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`).
+Engines decide URLs. Writers preserve unknown fields. Extensions namespace themselves with the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`).
 
-Mosaic supports **three profiles** for how much W3C / web-standards alignment a site declares:
-
-- **Core** — bare Mosaic, no `@type`, author's own vocabulary
-- **Web** — types declare `@type` from schema.org; engines emit JSON-LD automatically
-- **Linked Data** — full JSON-LD with `@context` and `@id` graph references
-
-Profile is declared in `mosaic.json#profile`. Engines MUST support Core; MAY support Web and Linked Data.
+Types in `mosaic.json#types` MAY declare an optional `@type` field naming a schema.org type (`Person`, `Article`, `Event`, etc.). When present, engines that emit JSON-LD use it automatically for SEO and AI discoverability; when absent, engines emit plain HTML. Schema.org alignment is per-type, not per-site.
 
 ---
 

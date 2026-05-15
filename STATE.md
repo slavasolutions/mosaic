@@ -29,9 +29,8 @@ The filesystem is the source of truth. Files are records (`.json` = structured, 
 One `ref:` prefix with three anchoring modes: cascade lookup (default — walks the parent chain outward), `/` for absolute from root, `./` for explicit relative. Deeper-wins cascade plus deep merge: same-named records placed deeper override shallower ones; objects merge by field, arrays replace whole. Cycles are free.
 
 ### 3. Forward-safe
-Engines decide URLs. Writers preserve unknown fields. Extensions use the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`). Authors declare a **profile** in `mosaic.json#profile` indicating how much W3C alignment they want — see Profiles section below.
+Engines decide URLs. Writers preserve unknown fields. Extensions use the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`). Types MAY declare an optional `@type` field for schema.org alignment — see the Schema.org section below.
 
-> Reduced from 8 truths to 3 principles. Everything cut became derived rules in SPEC.md (file extension determines role; `mosaic.json` is the manifest; routing is declared by the `pages` collection; validation has tiered severity; etc.). Same content, fewer foundational claims to memorize.
 
 ## Open questions remaining
 
