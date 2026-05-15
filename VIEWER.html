@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mosaic 0.9 — Live folder shape viewer</title>
+<style>
+  :root {
+    --c-bg: #fafaf7;
+    --c-bg-elev: #ffffff;
+    --c-bg-sunk: #f3f3ee;
+    --c-line: #e5e3dc;
+    --c-ink: #1a1a1a;
+    --c-ink-soft: #4a4a48;
+    --c-ink-mute: #9a9892;
+    --c-accent: #005bbb;
+    --c-accent-soft: rgba(0, 91, 187, 0.08);
+    --c-accent-ink: #003a78;
+    --code-bg: #1a1a1a;
+    --code-ink: #e8e8e3;
+    --f-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    --f-serif: "Iowan Old Style", "Apple Garamond", Georgia, serif;
+    --f-mono: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-7: 32px;
+    --r-sm: 4px; --r-md: 6px; --r-lg: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --c-bg: #0f1115; --c-bg-elev: #181b22; --c-bg-sunk: #14171c;
+      --c-line: #2a2e35; --c-ink: #e8e6e3; --c-ink-soft: #c0bdb6;
+      --c-ink-mute: #7a7872; --c-accent: #6ea8fe; --c-accent-soft: rgba(110,168,254,0.12);
+      --c-accent-ink: #b3d0ff;
+      --code-bg: #0a0c10; --code-ink: #d8d6d0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--c-bg); color: var(--c-ink);
+    font-family: var(--f-sans); font-size: 15px; line-height: 1.55;
+    margin: 0; padding: 32px 24px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .header { margin-bottom: 28px; }
+  .header .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--c-ink-mute); font-family: var(--f-mono); font-size: 13px; }
+  .header .brand strong { color: var(--c-ink); font-family: var(--f-sans); }
+  .header h1 { font-family: var(--f-serif); font-weight: 500; font-size: 32px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .header p { color: var(--c-ink-soft); margin: 0; max-width: 760px; }
+  .header .meta { color: var(--c-ink-mute); font-family: var(--f-mono); font-size: 12px; margin-top: 14px; }
+  .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-ink-mute); margin: 0 0 6px; }
+
+  .tree-shell {
+    display: grid; grid-template-columns: 1.05fr 0.95fr; gap: var(--s-7);
+    align-items: start; margin-top: 32px;
+  }
+  @media (max-width: 900px) { .tree-shell { grid-template-columns: 1fr; } }
+  .tree {
+    background: var(--c-bg-elev); border: 1px solid var(--c-line);
+    border-radius: var(--r-lg); padding: var(--s-5);
+    font-family: var(--f-mono); font-size: 14px; line-height: 1.85;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: 2px 8px; border-radius: var(--r-sm);
+    cursor: pointer; transition: background 0.12s ease; user-select: none;
+  }
+  .tree-row:hover { background: var(--c-bg-sunk); }
+  .tree-row.is-active { background: var(--c-accent-soft); color: var(--c-accent-ink); }
+  .tree-prefix { color: var(--c-ink-mute); white-space: pre; }
+  .tree-name { color: var(--c-ink); }
+  .tree-row.is-active .tree-name { color: var(--c-accent-ink); font-weight: 500; }
+  .tree-comment { color: var(--c-ink-mute); font-style: italic; margin-left: auto; font-size: 12px; }
+  .tree-icon { color: var(--c-ink-mute); flex-shrink: 0; }
+  .tree-row.is-active .tree-icon { color: var(--c-accent); }
+
+  .tree-detail {
+    background: var(--c-bg-sunk); border: 1px solid var(--c-line);
+    border-radius: var(--r-lg); padding: var(--s-5);
+    position: sticky; top: 24px;
+  }
+  .tree-detail h4 { margin: 0 0 var(--s-3); font-family: var(--f-serif); font-weight: 500; font-size: 22px; }
+  .tree-detail .kind {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--c-ink-mute); margin-bottom: var(--s-2);
+  }
+  .tree-detail p { margin: 0 0 var(--s-3); color: var(--c-ink-soft); }
+  .tree-detail .detail-code {
+    background: var(--code-bg); border: 1px solid var(--c-line);
+    border-radius: var(--r-md); padding: var(--s-3) var(--s-4);
+    font-family: var(--f-mono); font-size: 13px; color: var(--code-ink);
+    white-space: pre; overflow-x: auto;
+  }
+  .footer { margin-top: 40px; color: var(--c-ink-mute); font-size: 12px; text-align: center; }
+  .footer code { font-family: var(--f-mono); }
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="header">
+  <div class="brand"><strong>Mosaic</strong> <span>v0.9 draft</span></div>
+  <p class="eyebrow">Live folder shape viewer</p>
+  <h1>The folder is the website.</h1>
+  <p>A Mosaic site is a directory. <strong>Files are records</strong>; <strong>folders are collections</strong>. The folder structure below shows the current 0.9 shape. Hover or click an entry on the left to see what it means.</p>
+  <div class="meta">Reflects: PRINCIPLES.md · SPEC.md (work-in-progress) · 0.9 architectural decisions</div>
+</div>
+
+<div class="tree-shell">
+  <div class="tree" id="tree" role="tree" aria-label="Mosaic folder shape"></div>
+  <aside class="tree-detail" id="treeDetail" aria-live="polite"></aside>
+</div>
+
+<div class="footer">Mosaic 0.9 · open this file in any browser · canonical doc: <code>STATE.md</code></div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var TREE_DATA = [
+    {
+      indent: '',
+      icon: 'folder',
+      name: 'hromada/',
+      comment: 'the site',
+      kind: 'Site root',
+      heading: 'The site root',
+      body: 'A Mosaic site is a directory. The directory name is just a name — the manifest names the actual site. Everything else lives inside.',
+      code: 'hromada/'
+    },
+    {
+      indent: '├── ',
+      icon: 'doc',
+      name: 'mosaic.json',
+      comment: 'manifest',
+      kind: 'Reserved file — the manifest',
+      heading: 'mosaic.json',
+      body: 'The only reserved filename at the root. Declares spec version, identity, optional types (with @type for schema.org alignment), collections, redirects, design tokens. Always present; otherwise this folder is not a Mosaic site.',
+      code: '{\n  "version": "0.9",\n  "site": { "name": "Hromada Community" },\n  "types": {\n    "TeamMember": { "@type": "Person", "fields": {...} }\n  },\n  "collections": {\n    "team": { "type": "TeamMember" }\n  }\n}'
+    },
+    {
+      indent: '├── ',
+      icon: 'folder',
+      name: 'pages/',
+      comment: 'routed pages (conventional)',
+      kind: 'Collection — engine-routed by convention',
+      heading: 'pages/',
+      body: 'Pages is just a collection — but engines route it by convention. Each file or folder here becomes a URL. The folder structure under pages/ becomes the URL hierarchy. pages/index.{json,md} is the home record at /.',
+      code: 'pages/about.json       → /about\npages/services.json    → /services\npages/index.json       → /\npages/blog/post.md     → /blog/post'
+    },
+    {
+      indent: '├── ',
+      icon: 'folder',
+      name: 'team/',
+      comment: 'one record per person',
+      kind: 'Collection — at root',
+      heading: 'team/',
+      body: 'A collection sits directly at the root — no collections/ parent folder needed. Records inside are addressed via ref:team/anna. Engines emit URLs for these records only when a page mounts the collection via a collection-list section.',
+      code: 'team/anna.json         (record)\nteam/ben.json          (record)\nteam/maria/index.json  (folder-shape record)'
+    },
+    {
+      indent: '├── ',
+      icon: 'folder',
+      name: 'news/',
+      comment: 'one file per story',
+      kind: 'Collection — at root',
+      heading: 'news/',
+      body: 'Another collection. Pure prose stories live here as .md files; engines auto-link a sibling .json sidecar for metadata when the slugs match. JSON is the structural record; MD is referenced body content.',
+      code: 'news/2025-launch.md\nnews/2025-launch.json  (auto-linked sidecar)\nnews/spring-update.md'
+    },
+    {
+      indent: '├── ',
+      icon: 'folder',
+      name: 'images/',
+      comment: 'binary assets',
+      kind: 'Collection — binary records',
+      heading: 'images/',
+      body: 'Binary records (images, video, PDFs). The binary file IS the record. An optional same-slug .json sidecar carries metadata (alt, dimensions, caption, license). Addressed by ref:/images/<path> for absolute, or ref:images/<slug>.',
+      code: 'images/hero.jpg            (the record)\nimages/hero.json           (optional metadata)\nimages/logo.svg'
+    },
+    {
+      indent: '├── ',
+      icon: 'doc',
+      name: 'site.json',
+      comment: 'site-wide record',
+      kind: 'Record at root',
+      heading: 'site.json',
+      body: 'A record at the root level. Not a "singleton" structurally — just a JSON file at the root by convention. Holds site-wide content (tagline, contact, social). Addressed by ref:site. Use @selector to grab one field: ref:site@contact.email.',
+      code: '{\n  "name": "Hromada Community",\n  "tagline": "Building belonging",\n  "contact": { "email": "hello@..." }\n}'
+    },
+    {
+      indent: '├── ',
+      icon: 'doc',
+      name: 'header.json',
+      comment: 'top-of-page content',
+      kind: 'Record at root',
+      heading: 'header.json',
+      body: 'Navigation and logo content. Addressed by ref:header. Records like this can be overridden via cascade — drop pages/landing/header.json to override just for that subtree. Cascade walks parent chain, deeper wins, deep-merge.',
+      code: '{\n  "logo": "ref:/images/logo.svg",\n  "nav": [\n    { "label": "About",  "url": "/about" },\n    { "label": "Events", "url": "/events" }\n  ]\n}'
+    },
+    {
+      indent: '├── ',
+      icon: 'doc',
+      name: 'site.x-clearcms.json',
+      comment: 'engine extension sidecar',
+      kind: 'Extension sidecar',
+      heading: 'site.x-clearcms.json',
+      body: 'Engine extensions namespace themselves with x-. Same applies to in-record fields (x-clearcms.translations) and sidecar filenames (<slug>.x-<ns>.json). Engines preserve unknown fields verbatim — round-trip-safe across tools.',
+      code: '{\n  "translations": {\n    "uk": "Хромада",\n    "fr": "Communauté"\n  }\n}'
+    },
+    {
+      indent: '└── ',
+      icon: 'doc',
+      name: 'tokens.json',
+      comment: 'design tokens (DTCG)',
+      kind: 'Record at root',
+      heading: 'tokens.json',
+      body: 'Design tokens are content. Shape follows the W3C Design Tokens Community Group format. Address individual tokens with ref:tokens@color.accent. Renderers expose them as CSS custom properties.',
+      code: '{\n  "color": {\n    "accent":     { "$value": "#005bbb", "$type": "color" },\n    "background": { "$value": "#fafaf7", "$type": "color" }\n  }\n}'
+    }
+  ];
+
+  function iconSvg(kind) {
+    if (kind === 'folder') {
+      return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
+        + '<path d="M1.5 3.5A1 1 0 0 1 2.5 2.5h3.2l1 1.4h6.8a1 1 0 0 1 1 1v6.6a1 1 0 0 1-1 1H2.5a1 1 0 0 1-1-1z"'
+        + ' stroke="currentColor" stroke-width="1.3"/></svg>';
+    }
+    return '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">'
+      + '<path d="M3 1.5h6l4 4v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1z m6 0v3a1 1 0 0 0 1 1h3"'
+      + ' stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  function activate(i) {
+    var root = document.getElementById('tree');
+    var detail = document.getElementById('treeDetail');
+    if (!root || !detail) return;
+    var rows = root.querySelectorAll('.tree-row');
+    rows.forEach(function (r) { r.classList.remove('is-active'); r.removeAttribute('aria-selected'); });
+    if (rows[i]) {
+      rows[i].classList.add('is-active');
+      rows[i].setAttribute('aria-selected', 'true');
+    }
+    var n = TREE_DATA[i];
+    detail.innerHTML =
+        '<div class="kind">' + escapeHtml(n.kind) + '</div>'
+      + '<h4>' + escapeHtml(n.heading) + '</h4>'
+      + '<p>' + escapeHtml(n.body) + '</p>'
+      + '<div class="detail-code">' + escapeHtml(n.code) + '</div>';
+  }
+
+  function renderTree() {
+    var root = document.getElementById('tree');
+    if (!root) return;
+    var html = '';
+    for (var i = 0; i < TREE_DATA.length; i++) {
+      var n = TREE_DATA[i];
+      html += '<div class="tree-row" role="treeitem" tabindex="0" data-i="' + i + '"'
+           +  (i === 0 ? ' aria-selected="true"' : '') + '>'
+           +  '<span class="tree-prefix">' + n.indent + '</span>'
+           +  '<span class="tree-icon">' + iconSvg(n.icon) + '</span>'
+           +  '<span class="tree-name">' + n.name + '</span>'
+           +  '<span class="tree-comment">' + n.comment + '</span>'
+           +  '</div>';
+    }
+    root.innerHTML = html;
+    activate(0);
+
+    var rows = root.querySelectorAll('.tree-row');
+    rows.forEach(function (r) {
+      var idx = parseInt(r.getAttribute('data-i'), 10);
+      r.addEventListener('mouseenter', function () { activate(idx); });
+      r.addEventListener('click', function () { activate(idx); });
+      r.addEventListener('focus', function () { activate(idx); });
+      r.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          var next = idx + (e.key === 'ArrowDown' ? 1 : -1);
+          if (next < 0) next = TREE_DATA.length - 1;
+          if (next >= TREE_DATA.length) next = 0;
+          rows[next].focus();
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderTree);
+})();
+</script>
+</body>
+</html>
