@@ -374,3 +374,75 @@ Different surface (code packaging), structurally identical: a manifest at the ro
     - **C:** Full content addressing (OCI-style) — refs include a hash; immutable
     - **My recommendation:** B. Optional stable IDs, refs resolve either way. Authors who don't care use paths; authors who want rename-safety add `$id`. Path-based default for ergonomics; identity-based escape hatch for stability. Aligns with deferred MIP-0014-style locale resolution.
 
+
+---
+
+## Non-critical findings from the example-builder (to clean up in SPEC rewrite)
+
+The 10-example agent surfaced 26 items beyond the three critical ones. Listing here so they don't fall through cracks. Each item gets a recommendation; none block 0.9 ship; all should be resolved when SPEC.md gets rewritten in 0.10.
+
+### Friction points (judgment calls the agent had to make)
+
+| # | Issue | Recommendation |
+|---|---|---|
+| F1 | `collection-list#from:` ambiguity — filesystem path vs URL? | Filesystem path. Spec says `from: "news"` means the `news/` folder, not the URL `/news` |
+| F2 | Cascade override = merge or replace? | Deep merge per #2 in the deliberation pile (objects merge, arrays replace) |
+| F4 | Locale tag vs sidecar marker parsing precedence | Parse `x-` prefix FIRST, then check locale; locale tags can't start with `x-` so no collision |
+| F6 | DTCG `$value` / `$type` clash with our `$` reservation | Add explicit exception: `$ref`, `$asset`, `$rel`, `$value`, `$type` are reserved Mosaic+DTCG keys; other `$`-prefixed keys are illegal inside records (engine extensions use `x-`) |
+| F7 | Images-as-records — where's the binary? | The binary file IS the record. The optional sibling `.json` is the metadata sidecar. Same rule as text records (the file is the record; sidecars are optional metadata) |
+| F8 | Bare-MD warning code | Assign: `mosaic.record.bare-markdown` |
+| F9 | Pure-MD records can't carry refs (no JSON channel) | Accept and document. If you want refs from a markdown-only record, add a JSON sidecar |
+| F11 | Cascade depth varies by collection nesting | Document. Flat collections walk fewer levels; that's expected, not a bug |
+
+### Potential bugs (spec ambiguities)
+
+| # | Issue | Recommendation |
+|---|---|---|
+| B1 | Auto-link rule for folder-shape: `<dir>/index.json` + `<dir>/index.md` | Same rule: same-stem-in-same-dir auto-link. Slug is the FOLDER name; index pair compose the record |
+| B2 | Reserved slug `mosaic` vs reserved filename `mosaic.json` | Reserve only `mosaic.json` at root. A page slug `mosaic` elsewhere is fine. A folder named `mosaic/` at root would be a collection — legal. The `.json` extension at root is what's reserved, not the slug |
+| B3 | Bare collection-name refs like `ref:artists` | Resolves to the collection itself as a record (its `index.{json,md}` if present, else unresolved). Same rule as `ref:singleton-name` |
+| B5 | Collection folder's own `index.{json,md}` | Yes, allowed. Same universal rule. The folder represents a record (the collection's landing/metadata). Pages don't have to mount it for the record to exist |
+| B6 | Slug grammar restatement | Carry forward from 0.8: `^[a-z0-9][a-z0-9-]*$`. Applies uniformly to all collections including images |
+
+### Features that need explicit "kept" or "dropped" status
+
+| # | Feature | Status for 0.9 |
+|---|---|---|
+| C1 | `mosaic.json#singletons` declaration | **Dropped** (singleton concept removed; root files are records) |
+| C2 | `mosaic.json#types` declarations | **Kept**. Types declare record shapes. Critical for `mosaic.field.*` validation |
+| C4 | Redirects (`mosaic.json#redirects`) | **Kept**. Carried forward from 0.8 |
+| C5 | `urlPattern` overrides in `collection-list` | **Kept**. Carried forward from 0.8 |
+| C8 | `pages/home.*` reserved-slug | **Dropped**. `pages/index.*` is the home; `pages/home.*` is now just a normal page at `/home` (no auto-redirect). Simpler |
+| C9 | Inline tokens in `mosaic.json#tokens` | **Kept**. Both inline-in-manifest AND `tokens.json` singleton work; singleton wins if both |
+
+### Cases the agent couldn't generate
+
+- C3: Locale-prefixed URL routing — out of scope (engine concern)
+- C6: Actual binary assets — text-only exercise; needs real binary files for full coverage
+- C7: `mosaic.title.dead-h1` warning — needs an H1+JSON-title combo example
+
+These are minor coverage gaps in the 10-site corpus, not spec bugs. Fix when expanding to 100+ sites.
+
+---
+
+## Items from your earlier-start thoughts (in case they got clipped)
+
+If anything from the top of your message thread got lost, here's a memory aid of topics I noticed you raise this session that ARE captured somewhere:
+
+- Versioning history (0.0 bucket → 0.5 Mosaic landed) — CHANGELOG placeholders waiting your fill
+- "Session = step" versioning rule — CONTRIBUTING + AGENTS
+- Skills folder for paperwork workflows — `skills/`
+- Single-vs-dual repo for mosaic-explorer — separate repo decision, locked
+- BSON / image compression questions — STATE.md "open answers"
+- Frontmatter "soft" vs "hard" — STATE.md philosophy claim #4
+- Mosaic-on-R2 DB engine — STATE.md ecosystem section
+- Ref grammar unification (drop `asset:`, three anchors) — STATE.md architecture A6
+- Cascade as universal override mechanism — STATE.md philosophy claim #7
+- Pages as just-a-collection — STATE.md philosophy claim #6
+- File-vs-folder name collision rule — STATE.md philosophy claim #3
+- "Folder is the website" axiom — STATE.md philosophy claim #1
+- Trademark + licensing protection — live on main, PR #2
+- Decision-tree visualization — STATE.md alternatives section, mermaid retired
+
+If you remember a specific thought that ISN'T in this list, say it and I'll add it.
+
