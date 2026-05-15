@@ -18,97 +18,20 @@
 
 ---
 
-## Philosophy — 8 foundational claims
+## Principles — 3 foundational claims
 
-The spec derives from these. Plain language, no MUST/MAY.
+The spec derives from these. Plain language, no MUST/MAY. See `PRINCIPLES.md` for the canonical file.
 
 ### 1. The folder is the website
-The filesystem is the source of truth; nothing else is canonical.
+The filesystem is the source of truth. Files are records (`.json` = structured, `.md` = prose, anything else = binary/non-text content). Folders group records into collections.
 
-### 2. `mosaic.json` is the manifest
-One special file at the root identifies the folder as a Mosaic site and declares its shape — types, collections, redirects, tokens.
+### 2. Refs link records
+One `ref:` prefix with three anchoring modes: cascade lookup (default — walks the parent chain outward), `/` for absolute from root, `./` for explicit relative. Deeper-wins cascade plus deep merge: same-named records placed deeper override shallower ones; objects merge by field, arrays replace whole. Cycles are free.
 
-### 3. Files are records, folders are collections
-Records carry data in JSON; markdown and other content is referenced from them. Folders group records.
+### 3. Forward-safe
+Engines decide URLs. Writers preserve unknown fields. Extensions use the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`). Authors declare a **profile** in `mosaic.json#profile` indicating how much W3C alignment they want — see Profiles section below.
 
-**Open question — does "all root folders = collections" hold up?**
-
-The `.mosaic` zip layout you reviewed shows an apparent inversion: images have optional sidecars (sidecar = extra metadata), collection records have required JSON + optional sidecars. Different conventions per content type?
-
-- **Option A (recommended):** all root folders are collections. The apparent inversion is the SAME rule applied to different content types — the file (binary or JSON) IS the record; the JSON sidecar is optional metadata. For an image, the binary file IS the record (asset stub emitted at index time, fields derived from file). For a JSON record, the JSON IS the record (record stub emitted). Same rule, different file types.
-- **Option B:** split content types — `pages/`, `images/` reserved with own conventions.
-- **My recommendation:** A. Keeps universal composition. The "inversion" is cosmetic, not structural.
-
-### 4. JSON is the only structured channel
-Markdown is prose; structured fields live in JSON.
-
-**Open question — frontmatter support?**
-
-You reopened this. Three paths:
-
-- **Option A:** Spec stays silent (current). Engines may parse frontmatter as extension; not portable across Mosaic engines. Authors writing for portability avoid it.
-- **Option B:** Hard ban — `mosaic.frontmatter.present` is structural error. Migrator tool extracts frontmatter to JSON.
-- **Option C (your latest instinct):** "Not supported natively now, support in future." Spec is silent today; future MIP can normatively add frontmatter parsing semantics if real demand appears.
-- **My recommendation:** A + C combined. Spec stays silent for 0.9. Engines may parse; tools may convert. File a future MIP placeholder so the option is recorded. No active "ban", no active "support" — engine extension territory.
-
-### 5. Refs link records
-One `ref:` prefix, three anchors: cascade by default (walks parent chain), `/` for absolute from root, `./` for explicit relative. Selectors restored: `ref:tokens@color.accent` works for sub-addressing.
-
-**Locked:** unified `x-` namespace marker everywhere (fields `x-clearcms.foo`, sidecar files `<slug>.x-clearcms.json`).
-
-**Open question — cascade + locale interaction order:**
-
-When a page resolves `ref:header` at locale `uk`, the rules need an order:
-- (a) Cascade walks parent chain first, then locale picked at the resolved file. Risk: page sees English nav on a Ukrainian page.
-- (b) Locale is picked at each cascade level, then merge from deepest up.
-- (c) Hybrid: prefer localized variant at each cascade level.
-- **My recommendation: pending.** This is the most complex unresolved question. Needs concrete examples to pin down. Possibly a focused MIP.
-
-### 6. Routing is declared, not derived
-Pages-collection paths become URLs; other collections route only when a page mounts them.
-
-### 7. Deeper scope wins (cascade + deep merge)
-Cascade walks parent chain. Objects merge field-by-field; arrays replace whole.
-
-**You asked: what's the problem with cascade? If they want a direct path, `/` exists.**
-
-Right — `/` absolute and `./` explicit relative are escape hatches. Cascade is the friendly default. The real concern (devil's advocate raised it) was *silent debugging hell*: a deep file shadows a global, someone deletes the deep file, suddenly other pages render differently. The author at the `ref:header` site sees no change in their file.
-
-**Mitigation locked:** `mosaic.cascade.shadow` warning fires whenever cascade resolves to a non-root match. Authors and CI tooling can see the cascade graph and notice shadowing. Cascade behavior unchanged; visibility added.
-
-### 8. Forward-safe
-Engines decide URLs; writers preserve unknown fields; extensions namespace themselves with `x-` (fields and sidecars). Conflict on disk emits `MOS-CONFLICT` markers (git-style `<<<<<<<` for MD; same code for JSON; renamed `<slug>.conflict.<ext>` for binaries).
-
----
-
-## Architecture decisions (locked)
-
-### A1. `.mosaic` is the single distribution format
-EPUB-style zip with `.mosaic` extension. Inside is the canonical folder layout. Tools open it as zip; users see one file. Drop the light/heavy split — one canonical format.
-
-### A2. JSON-only structural index
-Every record's structural entry is JSON. MD = content referenced from it (optional auto-link if same-slug). Bare MD is engine charity, warning emitted.
-
-### A3. Cross-engine round-trip testing
-Every conformance fixture is validated TWO ways:
-1. Direct: folder → emit index → compare to expected
-2. Round-trip: folder → zip to `.mosaic` → unzip → emit index → compare
-
-Indexes must match byte-equal (or deep-equal). Catches: zip metadata leaks, path normalization bugs, locale-suffix parsing differences, file ordering bugs, Unicode normalization issues.
-
-### A4. Cascade lookup walks parent chain (no carveouts)
-Page records and globals coexist; cascade naturally never crosses into sibling collections. No special "pages skipped" rule.
-
-### A5. Sidecar override = cascade applied to globals
-The deeper-wins cascade IS the override mechanism. No separate spec rule needed. A deeper `header.json` overrides a root `header.json` for records under that scope.
-
-### A6. Unified `x-` namespace marker
-Both fields AND sidecar filenames use `x-`. `$astro.localized` becomes `x-astro.localized`. `header.x-clearcms.json` is the sidecar form.
-
-### A7. `@` selector restored to ref grammar
-DTCG tokens need it: `ref:tokens@color.accent`. Was inadvertently dropped during ref unification discussion. Restored.
-
----
+> Reduced from 8 truths to 3 principles. Everything cut became derived rules in SPEC.md (file extension determines role; `mosaic.json` is the manifest; routing is declared by the `pages` collection; validation has tiered severity; etc.). Same content, fewer foundational claims to memorize.
 
 ## Open questions remaining
 
@@ -172,7 +95,7 @@ Single folder `mips/`. Rust-style template. Numbered sequentially. Both spec cha
 - `propose-mip.md` — author a MIP
 
 ### Source-of-truth layers
-- `PHILOSOPHY.md` — foundational claims (this doc's source)
+- `PRINCIPLES.md` — foundational claims (this doc's source)
 - `SPEC.md` — normative rules
 - `mips/MIP-NNNN.md` — decisions and alternatives
 - If the same fact lives in two of these, delete one.
@@ -192,7 +115,7 @@ Single folder `mips/`. Rust-style template. Numbered sequentially. Both spec cha
 
 ## Decision log (this session, chronological)
 
-1. Renamed TRUTHS → PHILOSOPHY (file + concept)
+1. Renamed TRUTHS → PRINCIPLES (file + concept)
 2. Reduced 17 axioms to 7 hybrid-format claims (heading + 1 explainer)
 3. Added 8th claim "JSON only structured channel" after devil's advocate review
 4. Hoisted SPEC.md from `spec/` subdir to root
@@ -261,8 +184,8 @@ These came up but defer to later releases or are non-blocking:
 
 When 0.9-realignment merges to main:
 
-- 7 of 8 truths in PHILOSOPHY.md (8th open on frontmatter)
-- Renamed/restructured docs at root (PHILOSOPHY, SPEC, CHANGELOG, CONTRIBUTING, AGENTS, V1)
+- 7 of 8 truths in PRINCIPLES.md (8th open on frontmatter)
+- Renamed/restructured docs at root (PRINCIPLES, SPEC, CHANGELOG, CONTRIBUTING, AGENTS, V1)
 - Archived 0.8.1 docs in `archive/0.8.1/`
 - Skills folder with 5 process workflows + MIP template
 - CHANGELOG reconstructed back to 0.0 with placeholders for pre-0.7

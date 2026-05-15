@@ -1,6 +1,6 @@
-# Mosaic — Philosophy
+# Mosaic — Principles
 
-The 0.9 spec sits on top of seven foundational claims. Every rule in `SPEC.md` derives from one of them. Every MIP records the decision behind one. If a claim changes, the spec changes; if a claim holds, the spec holds.
+The Mosaic spec sits on three foundational claims. Every rule in `SPEC.md` derives from one of them. Every MIP records a decision made under one. If a claim changes, the spec changes; if a claim holds, the spec holds.
 
 Read this first. Argue with it before arguing with the spec.
 
@@ -10,40 +10,35 @@ Read this first. Argue with it before arguing with the spec.
 
 The filesystem is the source of truth; nothing else is canonical.
 
-## `mosaic.json` is the manifest
-
-One special file at the root identifies the folder as a Mosaic site and declares its shape — types, collections, redirects, tokens.
-
-## Records compose sites
-
-A record's index is a JSON file; markdown and other files are content referenced from it. Files at root are records; folders at root are collections of records; `pages` is the collection engines route from by convention.
+A site is a directory tree on disk. Files in that tree are **records**: `.json` carries structured data, `.md` carries prose, any other extension carries binary or non-text content. Folders group records into **collections**. The root folder holds the manifest (`mosaic.json`) plus the site's records and collections.
 
 ## Refs link records
 
-One `ref:` prefix, three anchors: cascade by default (search outward), `/` for absolute from root, `./` for explicit relative. Cycles free, lazy resolution.
+One `ref:` prefix with three anchoring modes: cascade lookup (default — walks the parent chain outward), `/` for absolute from root, `./` for explicit relative.
 
-## Routing is declared, not derived
-
-Pages-collection paths become URLs; other collections appear as URLs only when a page mounts them.
-
-## Deeper scope wins
-
-Cascade lookup plus deep merge — any record can be overridden by a same-named record placed deeper in the tree. Objects merge field-by-field; arrays replace whole.
+Refs resolved at any depth follow **deeper-wins cascade plus deep-merge**: a same-named record placed deeper in the tree overrides a shallower one, with objects merging by field and arrays replacing whole. Cycles are free.
 
 ## Forward-safe
 
-Engines decide URLs; writers preserve unknown fields; extensions namespace themselves with one `<ns>` identifier (fields as `$<ns>.<key>`, sidecar files as `<slug>.x-<ns>.json`).
+Engines decide URLs; writers preserve unknown fields; extensions namespace themselves with the `x-` marker (fields as `x-<ns>.<key>`; sidecar files as `<slug>.x-<ns>.json`).
+
+Mosaic supports **three profiles** for how much W3C / web-standards alignment a site declares:
+
+- **Core** — bare Mosaic, no `@type`, author's own vocabulary
+- **Web** — types declare `@type` from schema.org; engines emit JSON-LD automatically
+- **Linked Data** — full JSON-LD with `@context` and `@id` graph references
+
+Profile is declared in `mosaic.json#profile`. Engines MUST support Core; MAY support Web and Linked Data.
 
 ---
 
 ## What stays out
 
-These were considered and intentionally not promoted:
+These were considered and intentionally not promoted to principles:
 
-- **Layouts** — responsive grids, breakpoints, area assignment. Future MIP cluster once authoring experience exists.
-- **Per-page / per-component / per-record design overrides.** Deferred until layouts land.
+- **Layouts** — responsive grids, breakpoints. Future MIP cluster once authoring experience exists.
+- **Per-page / per-component design overrides.** Deferred until layouts land.
 - **Locale-prefixed URL routing** (e.g. `/uk/about`). Engine concern; future MIP paired with folder-style locale.
-- **Per-locale asset variants** beyond translatable-field refs.
 - **Auth, drafts, revisions, search indexes, deployment.** Engine and host concerns, not content shape.
 - **MDX.** Still out.
 
@@ -53,7 +48,7 @@ If any of these matter for your engine, build them as engine extensions. Forward
 
 ## How this file relates to the rest
 
-- **This file (`PHILOSOPHY.md`)** — foundational claims. Plain language. No MUST/MAY.
+- **This file (`PRINCIPLES.md`)** — foundational claims. Plain language. No MUST/MAY.
 - **`SPEC.md`** — the precise rules that implement these claims. RFC-2119 language.
 - **`mips/MIP-NNNN.md`** — the decisions and alternatives behind each rule. Historical record.
 

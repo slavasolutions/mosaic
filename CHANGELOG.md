@@ -6,7 +6,7 @@ Doc-layer realignment after drift accumulated through 0.8 → 0.8.1. No semantic
 
 ### Doc structure overhaul
 
-- `TRUTHS.md` renamed to `PHILOSOPHY.md`; rewritten as 10 hybrid-format truths (down from 17).
+- `TRUTHS.md` renamed to `PRINCIPLES.md`; rewritten as 10 hybrid-format truths (down from 17).
 - `SPEC.md` hoisted out of `spec/` subdir to repo root. Single file, no subdir split.
 - `OVERVIEW.md` folded into `README.md`.
 - `ARCHITECTURE.md`, `BUILD_REPORT.md`, original `TRUTHS.md`, original `spec/SPEC.md` moved to `archive/0.8.1/`.
@@ -22,7 +22,7 @@ Doc-layer realignment after drift accumulated through 0.8 → 0.8.1. No semantic
 ### Architecture
 
 - Studio architecture decoupled from CLI; explorer ships as a separate `mosaic-explorer` repo with its own release cadence.
-- Three-layer source-of-truth strictly separated: PHILOSOPHY (claims) / SPEC (rules) / MIPs (decisions).
+- Three-layer source-of-truth strictly separated: PRINCIPLES (claims) / SPEC (rules) / MIPs (decisions).
 
 ### Deferred to 0.10
 

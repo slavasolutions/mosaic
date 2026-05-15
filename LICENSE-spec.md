@@ -1,7 +1,7 @@
 # Mosaic Specification — License
 
 The normative specification text in this repository (currently `SPEC.md`,
-`PHILOSOPHY.md`, plus any future `mips/` proposal text and `mosaic.schema.json`
+`PRINCIPLES.md`, plus any future `mips/` proposal text and `mosaic.schema.json`
 annotations that are part of the spec prose) is licensed under:
 
     Creative Commons Attribution 4.0 International (CC BY 4.0)

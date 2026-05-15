@@ -85,7 +85,7 @@ is a separate PR that references the accepted MIP.
 Three docs, three jobs. If content overlaps between them, that is a
 bug — fix by deleting the duplicate.
 
-- **`PHILOSOPHY.md`** — foundational claims. Plain language. No MUST/MAY.
+- **`PRINCIPLES.md`** — foundational claims. Plain language. No MUST/MAY.
 - **`SPEC.md`** — normative rules. RFC-2119 language.
 - **`mips/MIP-NNNN.md`** — decisions and alternatives. No normative language.
 
@@ -120,7 +120,7 @@ bug — fix by deleting the duplicate.
 
 Mosaic is dual-licensed:
 
-- **Spec text** (`SPEC.md`, `PHILOSOPHY.md`, `mips/`, schema annotations) — CC BY 4.0.
+- **Spec text** (`SPEC.md`, `PRINCIPLES.md`, `mips/`, schema annotations) — CC BY 4.0.
 - **Code** (validators, schema tooling, runnable examples, build
   scripts) — Apache License 2.0.
 
