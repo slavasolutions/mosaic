@@ -7,7 +7,7 @@ annotations that are part of the spec prose) is licensed under:
     Creative Commons Attribution 4.0 International (CC BY 4.0)
     https://creativecommons.org/licenses/by/4.0/legalcode
 
-Copyright (c) 2026 M. Slavatynskyy.
+Copyright (c) 2026 Slava Solutions.
 
 You are free to:
 
@@ -17,7 +17,7 @@ You are free to:
 
 Under the following terms:
 
-- **Attribution** — You must give appropriate credit to "M. Slavatynskyy
+- **Attribution** — You must give appropriate credit to "Slava Solutions
   and the Mosaic project contributors," provide a link to the original
   spec at <https://github.com/slavasolutions/mosaic>, and indicate if
   changes were made. You may do so in any reasonable manner, but not in

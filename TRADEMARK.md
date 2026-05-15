@@ -4,7 +4,7 @@
 
 "Mosaic" (as applied to a portable document format for structured web
 content), the Mosaic logo, and the names "Mosaic Improvement Proposal"
-and "MIP" are trademarks of M. Slavatynskyy (the "Project Owner").
+and "MIP" are trademarks of Slava Solutions (the "Project Owner").
 
 The format itself is open. The **name** is not. This policy explains
 the line.
@@ -149,5 +149,5 @@ not a cease-and-desist. Deliberate impersonation gets the full toolkit.
 
 This policy is licensed under CC BY 4.0. You're encouraged to copy and
 adapt it for your own projects. Attribution: based on the Mosaic
-Trademark Policy by M. Slavatynskyy
+Trademark Policy by Slava Solutions
 (<https://github.com/slavasolutions/mosaic>).
