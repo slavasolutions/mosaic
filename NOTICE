@@ -1,0 +1,16 @@
+Mosaic
+Copyright 2026 Slava Solutions and the Mosaic project contributors.
+
+This product includes software and a specification developed by
+Slava Solutions (https://github.com/slavasolutions/mosaic).
+
+Specification text (spec.md, proposals/, schema annotations) is
+licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+Code (validators, schema tooling, examples that ship as runnable code)
+is licensed under the Apache License, Version 2.0.
+
+"Mosaic" and the Mosaic logo are trademarks of Slava Solutions. Use of
+these marks is governed by TRADEMARK.md. Use of the format does NOT
+require a trademark license; calling your fork or product "Mosaic" or
+"Mosaic-compatible" without following TRADEMARK.md DOES require one.
