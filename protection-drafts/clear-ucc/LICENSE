@@ -1,0 +1,46 @@
+Copyright (c) 2026 M. Slavatynskyy / Slava Solutions, contracted by
+the Ukrainian Canadian Congress — Ontario Provincial Council
+("UCC-OPC") for the development of www.uccontario.ca (the "UCCON
+Website").
+
+ALL RIGHTS RESERVED.
+
+This software is the proprietary work of M. Slavatynskyy and is made
+available to UCC-OPC under a separate written services agreement.
+Unless otherwise agreed in writing, the following terms apply.
+
+NO LICENSE GRANTED. No license, express or implied, is granted to any
+party by this repository. In particular:
+
+  - You MAY NOT copy, modify, distribute, sublicense, or create
+    derivative works of this software.
+  - You MAY NOT publish, host, deploy, or share this software in
+    whole or in part.
+  - You MAY NOT use the source code, design files, copy, or branding
+    contained herein for any purpose other than the operation and
+    maintenance of www.uccontario.ca by or on behalf of UCC-OPC.
+
+THIRD-PARTY COMPONENTS. This repository depends on third-party
+open-source software (Astro, Inlang Paraglide, fontsource packages,
+etc.). Those components retain their own copyrights and licenses —
+see `package.json`, `package-lock.json`, and the respective LICENSE
+files in `node_modules/` for terms. Nothing in this LICENSE alters
+the terms of those third-party licenses.
+
+CONTENT VS. CODE. Editorial content (text, images, JSON entries
+under `src/content/`, branch metadata, translated strings under
+`messages/`) is the property of UCC-OPC. The CODE in this repo (Astro
+components, styles, scripts, build tooling, the design system) is the
+property of M. Slavatynskyy. The two may be separated on termination
+of the services agreement: UCC-OPC retains rights to the content;
+M. Slavatynskyy retains rights to the code unless a separate
+written transfer is executed.
+
+NO WARRANTY. THIS SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THIS
+SOFTWARE.
+
+CONTACT. Licensing inquiries: legal@slavasolutions.com.

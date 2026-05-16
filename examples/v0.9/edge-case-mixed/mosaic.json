@@ -1,0 +1,9 @@
+{
+  "version": "0.9",
+  "site": {
+    "name": "Hromada",
+    "url": "https://hromada.example",
+    "defaultLocale": "en",
+    "locales": ["en", "uk"]
+  }
+}

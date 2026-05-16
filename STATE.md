@@ -368,3 +368,273 @@ If anything from the top of your message thread got lost, here's a memory aid of
 
 If you remember a specific thought that ISN'T in this list, say it and I'll add it.
 
+
+---
+
+# Session updates (2026-05-15 → 2026-05-16)
+
+This section captures decisions made AFTER the initial 3-principle lock. Read top-down; everything here is locked unless explicitly flagged open.
+
+## Architecture: three layers, three names
+
+Final positioning:
+
+| Layer | Name | What it is | Status |
+|---|---|---|---|
+| **Format** (spec) | **Mosaic** | The portable folder-shape spec. The format. | Open (CC BY 4.0 + Apache 2.0) |
+| **Editor app** | **FolderDB** | Open-source editor/viewer (was `mosaic-explorer`). Profile-agnostic — works with any Mosaic content. Bun-compiled binary + NPM. | Open (MIT or Apache 2.0) |
+| **Commercial CMS** | **Clear** | Closed-source admin + hosted runtime. Real-time multi-user editing, polished UX. Content stays in portable Mosaic format. | Closed-source product |
+
+**The bet:** open format prevents lock-in; paid product (Clear) earns its money by doing what the filesystem + git can't do alone (live collaboration, polished editor, hosting).
+
+## Filesystem-as-DB — what we get free
+
+This is the architectural insight that justifies the whole stack. The filesystem provides natively:
+
+- Atomic single-file writes (temp + rename pattern; POSIX-guaranteed)
+- Concurrent reads (no locks needed)
+- File-level locking (`flock`, `LockFileEx`)
+- Change watching (`inotify` / `FSEvents` / `ReadDirectoryChangesW`)
+- Permissions / access control (Unix ACLs)
+- Backup / replication tools (rsync, git, Time Machine)
+- Search (grep, find, OS indexers)
+- Mountable backends (local FS, NFS, SMB, S3-as-FUSE, R2-as-FUSE)
+- Cross-platform compatibility
+
+What it DOESN'T give:
+- Multi-file transactions (use git commits or app-level coordination)
+- Real-time multi-user editing (CRDT/OT layer needed — Clear's territory)
+- Conflict resolution for binary files (manual)
+- Query indexes (engine builds + caches)
+- Foreign-key enforcement (validator catches at index time)
+
+Git fills the multi-user gap for ~80% of workflows (3-way merge, branch-isolated edits, distributed sync). Clear sells the remaining 20% (real-time collab + hosted polish).
+
+## `.mosaic.html` polyglot bundle (post-1.0 feature)
+
+A `.mosaic.html` file is a **polyglot** — same bytes work as both:
+
+- HTML you open in any browser (renders the whole site offline, no server)
+- A valid ZIP archive you can `unzip` to recover the source folder
+
+How: HTML at top of file; raw zip bytes after `</html>`. Zip readers scan from EOF for the central directory, ignoring the HTML prefix. HTML parsers stop at `</html>` and ignore the binary tail.
+
+Precedent: PDF+ZIP polyglots, TiddlyWiki (single-HTML wiki), Excalidraw HTML exports.
+
+CLI command (future): `mosaic bundle --format html-zip ./my-site > my-site.mosaic.html`
+
+Use cases:
+- Email a website
+- Drop on USB / archive
+- Build runnable multi-page apps (like TiddlyWiki, Reveal.js decks, interactive resumes)
+
+Multi-page apps work via client-side routing inside the bundled JS. Real-time collab and server-side dynamic data DON'T work (it's a snapshot). Forms, search, filtering, theming, localStorage state all work.
+
+## Manifest expanded with optional Data-Package-style metadata
+
+`mosaic.json` may include optional fields aligned with Frictionless Data Package / npm / Cargo conventions:
+
+```json
+{
+  "version": "0.9",
+  "title": "My Site",
+  "description": "...",
+  "homepage": "https://example.org",
+  "license": "CC-BY-4.0",
+  "authors": [{ "name": "Slava Solutions" }],
+  "keywords": ["news", "community"],
+  "site": { "name": "...", "locale": "...", "defaultLocale": "..." },
+  "types": { "...": { "@type": "Person", "fields": {...} } },
+  "collections": { "...": {...} },
+  "globals": { "...": {...} },
+  "redirects": [...],
+  "tokens": {...}
+}
+```
+
+All metadata fields optional. Adds zero spec rules; aligns with adjacent specs for free interop.
+
+## JSON Schema for record field types
+
+`mosaic.json#types` uses **JSON Schema** (Draft 2020-12) instead of bespoke field-type shape. Reasons: universal standard, every language has a validator, constraints (`pattern`, `enum`, `format`, `minLength`) come free. No reinventing.
+
+## Schema.org alignment — optional `@type` only
+
+Dropped the Core/Web/Linked-Data profile concept entirely. Replaced with:
+
+- Types in `mosaic.json#types` MAY declare an `@type` field naming a schema.org type
+- Engines that emit JSON-LD use `@type` for SEO + AI discoverability
+- Engines that don't care ignore the field
+- No site-level "profile" / "mode" switching
+- No required schema.org field names (recommended convention; not enforced)
+
+## Frontmatter — hard ban
+
+Spec MUST reject markdown files with frontmatter (`---` YAML/TOML at the top). Structural error: `mosaic.frontmatter.present`.
+
+Why: third structured channel creates precedence ambiguity. Cleaner spec; one rule.
+
+Migration: `mosaic.cli convert --from frontmatter` extracts frontmatter into JSON sidecars.
+
+## Cascade + locale resolution order (locked)
+
+Two-phase resolution to avoid the cascade-vs-locale tangle:
+
+1. **Phase 1 — Locale per record.** When fetching a record, look for `<slug>.<locale>.{json,md}` first; fall back to `<slug>.{json,md}`.
+2. **Phase 2 — Cascade per ref.** Once the record is loaded, refs trigger cascade walk. At each parent folder, prefer locale variant; deeper wins; deep-merge.
+
+Locale is dimension one (per-record); cascade is dimension two (per-ref scope).
+
+## Core stays in the spec repo
+
+Earlier debated separate repo for `@mosaic/core` — reversed. **One repo for solo maintainer + 99%-solo contributions. Less overhead, no cross-repo coordination, easier CI.** Other-language implementations can fork or reimplement from spec.
+
+## Monorepo structure (future, 0.10 target)
+
+```
+mosaic/  (single repo; was slavasolutions/mosaic, future mosaic-spec/spec)
+├── PRINCIPLES.md / SPEC.md / etc.                        spec docs
+├── mips/                                                  proposals
+├── skills/                                                process docs
+├── packages/                                              NPM-publishable libs
+│   ├── core/        @mosaic/core (or @folderdb/core)
+│   ├── cli/         @mosaic/cli
+│   ├── astro/       @mosaic/astro
+│   └── sql/         @mosaic/sql (future SQL adapter)
+├── apps/                                                  end-products
+│   └── folderdb/    FolderDB editor (was mosaic-explorer)
+├── examples/                                              sample sites
+├── tests/conformance/                                     conformance corpus
+├── docs/                                                  narrative + showcase.html
+└── archive/0.8.1/                                         pre-realignment snapshot
+```
+
+Pure restructure, no spec change. 0.10 work.
+
+## Layered spec architecture (deferred to 0.10+)
+
+The spec layer split that almost-happened:
+
+- **FolderDB substrate** (Layer 1) — pure hierarchical-data-on-filesystem rules. No CMS opinion. Records + collections + refs + cascade + file-extension-role.
+- **Mosaic CMS profile** (Layer 2) — adds web conventions: pages collection routed by URL, design tokens, redirects, locale variants.
+- **Other potential profiles** — Knowledge, Slides, Docs, Inventory, Archive, Recipe, Data, Portfolio, Event, Wiki, Game.
+
+For 0.9: spec is flat (everything in PRINCIPLES.md + SPEC.md). For 0.10 considered: split into `spec/format/` + `spec/profiles/cms/`. Document INTENT now; split when execution justifies.
+
+## SQL adapter (post-1.0)
+
+`@mosaic/sql` package would expose a Mosaic folder as SQLite virtual tables. Author writes SQL; engine translates to walker operations.
+
+```sql
+ATTACH '@mosaic/sql:./mosaic' AS m;
+SELECT n.headline, t.name AS author
+FROM m.news n JOIN m.team t ON n.author = t.slug
+WHERE n.datePublished > '2025-01-01';
+```
+
+~1500 LOC. Free joins, free aggregation. Killer demo: "Mosaic content + SQL = instant analytics."
+
+## Standards-body path
+
+Three tiers, build up over time:
+
+1. **Self-published** (now) — github.com/slavasolutions/mosaic. Cite via permalinks or Zenodo DOI.
+2. **W3C Community Group** (post-1.0, free) — start with 5+ members. Get `www.w3.org/community/mosaic/` URL prefix. Lightweight; doesn't make Mosaic a W3C Recommendation but adds legitimacy.
+3. **IETF Independent Submission** for specific pieces (post-1.0) — `.mosaic` media type as one RFC; `ref:` URI scheme as another. Each is a 1-2 year process.
+
+Full W3C Working Group or IETF standards-track: only if multi-vendor adoption emerges. Years away.
+
+## OSS landscape — what doesn't exist
+
+Verified via gh API + WebFetch:
+- Folder-based JSON libraries exist (lowdb 22.5k⭐, rxdb 23.2k⭐, Filebase archived 285⭐, others tiny)
+- NONE bolted CMS conventions on top
+- All are LIBRARIES, not SPECS
+- Most popular flat-file DBs (lowdb, json-flatfile-datastore) are **single-file** not folder-tree
+- Folder-as-DB libraries are small niche; Filebase archived 2024 with no migration story
+
+**Mosaic's wedge: portable folder-shape SPEC with CMS conventions on top. Genuinely uncolonized.**
+
+## Theoretical profiles (Mosaic's extensibility)
+
+| Profile | Folder shape | Use case |
+|---|---|---|
+| Mosaic CMS (default) | pages/, collections, tokens | Web content |
+| Mosaic Slides | slides/, deck.json, sequence | Reveal.js / talk decks |
+| Mosaic Knowledge | topics/, notes/, refs, backlinks | Obsidian-like PKM |
+| Mosaic Docs | docs/, sections/, glossary | Technical documentation |
+| Mosaic Inventory | products/, categories/, suppliers | E-commerce catalog |
+| Mosaic Archive | items/, manifest-sha256.txt | Digital preservation |
+| Mosaic Recipe | recipes/, ingredients/, methods | Cookbook |
+| Mosaic Data | tabular/, schemas/, resources | Frictionless-style |
+| Mosaic Portfolio | projects/, case-studies/ | Designer/dev portfolios |
+| Mosaic Event | events/, sessions/, speakers | Conference sites |
+
+Each profile MAY be a separate MIP / package / engine. Spec doesn't require any profile.
+
+## VIEWER.html — live demo
+
+Interactive folder-shape viewer at `/VIEWER.html` (worktree root). Three tabs:
+- **Mosaic** — full 0.9 folder shape with all cases (paired records, folder-shape, locale variants, cascade overrides, extension sidecars, binary records with metadata sidecars)
+- **STAC** — closest analog (geospatial spec, same shape)
+- **OCI Image** — content-addressed container layout (different domain, similar bones)
+
+Expand folders via ▸ toggles. Hover/click rows for detail. Color-coded per spec. Dark mode aware. Single self-contained HTML; open in any browser.
+
+## What 0.9 actually ships (final)
+
+Branch: `0.9-realignment` (16 commits)
+
+Live on main (PR #2 — protection only):
+- License: CC0 → CC BY 4.0 (spec) + Apache 2.0 (code)
+- NOTICE, TRADEMARK, SECURITY, CONTRIBUTING
+- Copyright holder: Slava Solutions
+
+Pending merge from 0.9-realignment to main (full doc realignment):
+- PRINCIPLES.md (3 truths)
+- SPEC.md hoisted to root
+- Archive of 0.8.1 docs (TRUTHS, OVERVIEW, ARCHITECTURE, BUILD_REPORT, old spec/)
+- skills/ folder + MIP template
+- CHANGELOG reconstructed back to 0.0
+- STATE.md + STATE.html (working overview)
+- VIEWER.html (live interactive viewer)
+- README footer aligned with new license/trademark/copyright
+
+Not in 0.9 — deferred:
+- SPEC.md rewrite for cascade + unified refs + x- extensions + JSON Schema types + schema.org optional @type + new principles
+- tools/ → packages/ rename
+- record → entry rename
+- Layered spec split (FolderDB substrate + Mosaic CMS profile)
+- FolderDB editor app
+- Clear monetization rollout
+- 100-site conformance corpus expansion
+- SQL adapter
+- .mosaic.html polyglot bundler
+- W3C CG submission
+- IETF Independent Submission for media type
+- ref identity & rename safety (MIP-0016 candidate)
+
+## Open questions remaining (updated)
+
+| # | Question | Status | Pick |
+|---|---|---|---|
+| 1 | Frontmatter — silent / ban / future? | **Locked** | Hard ban with migrator tool |
+| 2 | Cascade + locale interaction order? | **Locked** | Two-phase: locale first, cascade second |
+| 3 | Core in spec repo or separate? | **Locked** | Same repo |
+| 4 | What is `@mosaic/db` — DB engine? | **Locked** | Doesn't exist as separate concept. FolderDB IS the editor; filesystem is the database |
+| 5 | Index requires CLI? | **Locked** | No — hand-authorable |
+| 6 | Native folder mount vs collection-list? | **Locked** | Section JSON stays |
+| 7 | Compressed collection format? | Deferred | 0.10+ MIP |
+| 8 | Locale-folder pattern in spec? | Deferred | 0.10+ |
+| 9 | Decision-tree viz? | **Locked** | STATE.md + VIEWER.html as canonical |
+| 10 | Ref identity & rename safety | **Critical, open** | MIP-0016 candidate; optional `$id` field for rename-safe refs |
+| 11 | Profiles concept | **Locked dropped** | Replaced with optional `@type` per type |
+| 12 | Layered spec split (FolderDB + Mosaic CMS) | **Open, deferred** | 0.10 candidate; document intent in V1.md |
+| 13 | `.mosaic.html` polyglot bundle | Deferred | 0.11+ feature; not spec, engine concern |
+| 14 | SQL adapter | Deferred | 1.1+; not spec, engine concern |
+| 15 | W3C CG submission | Deferred | post-1.0 |
+| 16 | IETF media type RFC | Deferred | post-1.0 |
+| 17 | Mosaic site name (mosaic-site dogfood) | Deferred | 0.11+ |
+| 18 | FolderDB editor app | Deferred | 0.11+ |
+| 19 | Clear monetization strategy | Deferred | post-1.0; closed admin + open format |
+

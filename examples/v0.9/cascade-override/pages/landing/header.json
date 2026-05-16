@@ -1,0 +1,11 @@
+{
+  "nav": [
+    { "label": "See the show", "href": "#show" },
+    { "label": "Get tickets", "href": "#tickets" }
+  ],
+  "cta": {
+    "label": "Reserve seats",
+    "href": "#tickets",
+    "style": "primary"
+  }
+}

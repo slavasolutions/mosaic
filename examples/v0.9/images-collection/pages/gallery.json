@@ -1,0 +1,11 @@
+{
+  "title": "Gallery",
+  "sections": [
+    {
+      "type": "collection-list",
+      "from": "/images",
+      "sort": "date desc",
+      "urlPattern": "/gallery/{slug}"
+    }
+  ]
+}

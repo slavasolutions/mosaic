@@ -1,0 +1,14 @@
+{
+  "nav": [
+    { "label": "Shows", "href": "/shows" },
+    { "label": "Tickets", "href": "/tickets" },
+    { "label": "About", "href": "/about" },
+    { "label": "Visit", "href": "/visit" }
+  ],
+  "cta": {
+    "label": "Book now",
+    "href": "/tickets",
+    "style": "primary"
+  },
+  "logo": "Riverbend"
+}

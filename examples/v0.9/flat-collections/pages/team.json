@@ -1,0 +1,6 @@
+{
+  "title": "Our Team",
+  "sections": [
+    { "type": "collection-list", "from": "/team" }
+  ]
+}

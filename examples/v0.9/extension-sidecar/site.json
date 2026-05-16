@@ -1,0 +1,12 @@
+{
+  "name": "Polestar Co-op",
+  "tagline": "Worker-owned graphic design studio.",
+  "contact": {
+    "email": "hello@polestar.example",
+    "phone": "+1 503 555 0144"
+  },
+  "social": {
+    "mastodon": "https://hachyderm.io/@polestar",
+    "are.na": "https://are.na/polestar-coop"
+  }
+}

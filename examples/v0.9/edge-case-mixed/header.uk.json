@@ -1,0 +1,8 @@
+{
+  "nav": [
+    { "label": "Програми", "href": "/programs" },
+    { "label": "Митці", "href": "/artists" },
+    { "label": "Історії", "href": "/programs/stories" },
+    { "label": "Підтримати", "href": "/donate" }
+  ]
+}

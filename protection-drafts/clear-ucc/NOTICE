@@ -1,0 +1,26 @@
+UCCON Website (clearcms/clear-ucc)
+Copyright (c) 2026 M. Slavatynskyy / Slava Solutions.
+
+Editorial content (text, translations, images, branch metadata) is
+the property of the Ukrainian Canadian Congress — Ontario Provincial
+Council (UCC-OPC). All other code, components, and design assets are
+the property of M. Slavatynskyy.
+
+This repository is PROPRIETARY. See LICENSE. No open-source rights
+are granted.
+
+Third-party dependencies (Astro, Inlang Paraglide, @fontsource/*,
+etc.) retain their own copyrights and licenses; see package.json and
+node_modules/ for details.
+
+"UCC-OPC," "Ukrainian Canadian Congress," and related marks are the
+property of the Ukrainian Canadian Congress and its Ontario
+Provincial Council. Used here under the services agreement only.
+
+This repository is NOT part of, and NOT covered by the licenses of:
+- The Mosaic format (https://github.com/slavasolutions/mosaic).
+- The Clear engine (https://github.com/clearcms/clear).
+
+It is a client deliverable hosted under the clearcms/ org for
+operational convenience only. Hosting it under the clearcms/ org does
+NOT make it open source.

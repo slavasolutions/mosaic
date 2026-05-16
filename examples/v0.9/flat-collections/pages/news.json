@@ -1,0 +1,6 @@
+{
+  "title": "News",
+  "sections": [
+    { "type": "collection-list", "from": "/news", "sort": "date desc" }
+  ]
+}

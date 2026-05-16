@@ -1,0 +1,33 @@
+Clear
+Copyright 2026 M. Slavatynskyy and the Clear project contributors.
+
+This product includes software developed by M. Slavatynskyy
+(https://github.com/clearcms/clear).
+
+Clear is the reference implementation of the Mosaic portable document
+format (https://github.com/slavasolutions/mosaic). The Mosaic format
+itself is licensed separately under CC BY 4.0 (spec text) and
+Apache 2.0 (reference code). The Mosaic format is not a derivative of
+Clear; Clear is a derivative of the Mosaic format.
+
+This product is licensed under the Apache License, Version 2.0
+(the "License"); you may not use this product except in compliance
+with the License. You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Per Apache 2.0 §4(d), this NOTICE file MUST be retained in any
+redistribution of this software, source or binary, in whole or in
+part. You may add your own attribution notices within derivative
+works, alongside or as an addendum to the NOTICE text from the work,
+provided that such additional attribution notices cannot be construed
+as modifying the License.
+
+"Clear," the Clear logo, "ClearCMS," and "Clear Studio" are trademarks
+of M. Slavatynskyy. Use of these marks is governed by TRADEMARK.md.
+Use of the software is permitted under Apache 2.0; use of the marks
+is not.
+
+Third-party components shipped with Clear retain their own copyrights
+and licenses. See the respective package.json / LICENSE files in
+packages/ and node_modules/ for details.

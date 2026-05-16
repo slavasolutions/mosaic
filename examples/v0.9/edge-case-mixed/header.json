@@ -1,0 +1,10 @@
+{
+  "nav": [
+    { "label": "Programs", "href": "/programs" },
+    { "label": "Artists", "href": "/artists" },
+    { "label": "Stories", "href": "/programs/stories" },
+    { "label": "Donate", "href": "/donate" }
+  ],
+  "logo": "Hromada",
+  "accent": "ref:tokens@color.accent"
+}

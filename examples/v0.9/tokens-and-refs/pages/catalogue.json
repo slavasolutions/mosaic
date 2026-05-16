@@ -1,0 +1,7 @@
+{
+  "title": "Catalogue",
+  "sections": [
+    { "type": "collection-list", "from": "/books", "sort": "date desc" }
+  ],
+  "tag_color": "ref:tokens@color.muted"
+}
