@@ -638,3 +638,107 @@ Not in 0.9 — deferred:
 | 18 | FolderDB editor app | Deferred | 0.11+ |
 | 19 | Clear monetization strategy | Deferred | post-1.0; closed admin + open format |
 
+
+---
+
+# Late-session additions (2026-05-16, end of run)
+
+## Repos closed to private (this session)
+
+- `clearcms/clear` → private (was public, 1 star). Clear is closed-source going forward.
+
+Still public — flagged for user decision:
+- `clearcms/clear-2026-05` (snapshot copy)
+- `clearcms/clear-legacy` (earlier version)
+- `clearcms/bucket` (precursor "FolderDB" concept, technically related)
+- `clearcms/examples-host` (live examples; probably OK public)
+
+## Polyglot bundle PROVEN with real data
+
+Built a working `.mosaic.html` from `clear-ucc-mosaic/content/`:
+- Input: 49 MB content folder (451 files: 223 JSON, 40 MD, ~150 images, 3 fonts)
+- Output: 45 MB single `.mosaic.html` file at `/tmp/clear-ucc.mosaic.html`
+- Verified: valid HTML (browser renders proof-of-concept landing page) AND valid ZIP (`unzip -l` shows all 451 files; extraction works without renaming)
+- File can be opened as HTML or extracted with `unzip` — both work on the same bytes
+
+The bundle currently contains a proof-of-concept landing page only — no actual Mosaic renderer JS yet (that's ~1500-2500 LOC of future work).
+
+## Astro offline-build investigation (clear-ucc)
+
+The current Astro build at `clear-ucc-mosaic/dist/` does NOT work under `file://` because:
+
+1. `output: 'server'` produces template HTML that needs Vercel runtime
+2. `adapter: vercel()` — server-mode, not static
+3. Absolute paths everywhere: `/favicon.ico`, `/icon-192.png`, `/site.webmanifest` — resolve to filesystem root under `file://`
+4. ES module scripts (`<script type="module">`) — CORS-blocked under `file://`
+5. CSS loaded via Vite-hashed `_astro/*.css` modules — same CORS issue
+
+**Concrete fix** for offline build (when needed): add a secondary `astro.config.offline.mjs`:
+
+```js
+import { defineConfig } from 'astro/config';
+export default defineConfig({
+  // no site:    (forces relative paths)
+  output: 'static',
+  // no adapter
+  build: {
+    inlineStylesheets: 'always',
+    assets: '_assets',
+  },
+});
+```
+
+Plus a script: `"build:offline": "astro build --config astro.config.offline.mjs"`.
+
+Result: dist/ that opens under `file://` with full styling on the LANDING PAGE. Multi-page navigation still requires a tiny local http.server because Astro uses fetch for route prefetching.
+
+## Multi-page-into-single-HTML — 4 paths sized
+
+1. **Inline all pages + JS router (SPA conversion)** — single HTML, all pages reachable, full Astro fidelity. ~2000-3000 LOC of bundler engineering.
+2. **Ship `dist/` as a folder** — recipient runs `python3 -m http.server`. 0 LOC; works today.
+3. **`folderdb serve ./dist` helper** — binary opens browser to local http server. ~50 LOC. Works for any static dist.
+4. **Single-file Astro tooling** — some tools exist (monolith for single page); nothing for multi-page Astro out of the box.
+
+For Turkish translation handoff: **Path 2 or 3 is realistic today.** Path 1 is the future "true polyglot bundle" experience.
+
+## Locale pattern — reopened
+
+Earlier locked: locale-suffix files only (MIP-0014 pattern: `about.uk.md`).
+
+Reopened: **both patterns should be allowed.**
+- Locale-suffix files (MIP-0014) — best for light translation
+- Locale-prefix folders (`pages/uk/about.md`) — best for heavy translation (clear-ucc's 354 records × 3 locales)
+- Authors pick per project, or mix within one site
+- Future MIP candidate (0.10) to formalize the folder-prefix pattern
+
+## Bundle modes proposed
+
+Three modes for `folderdb bundle`:
+
+1. **`folderdb bundle ./mosaic`** — view-only, smaller (~few hundred KB JS). Send for review.
+2. **`folderdb bundle --edit ./mosaic`** — view + edit, in-place save-back (~1500 KB JS). Translation handoff fits here.
+3. **`folderdb bundle --view-translation --primary en --secondary uk ./mosaic`** — side-by-side translation mode. Specialized for the translation use case.
+
+All defer to FolderDB binary work (0.11+).
+
+## Terminology — re-locked
+
+"Profile" was wrong terminology (we dropped W3C-alignment profiles earlier; using it for use-case packs created confusion).
+
+**Don't formalize profiles in the spec.** Just say "use cases" in docs. Mosaic spec is one spec; use cases (CMS, slides, knowledge, recipe, inventory) are documentation framing, not formal spec packs.
+
+## Final naming check (everything stays)
+
+- **Mosaic** — format spec (locked)
+- **FolderDB** — editor app, profile-agnostic (locked name)
+- **Clear** — closed-source commercial CMS product (locked; repo went private this session)
+- **`.mosaic.html`** — polyglot bundle (locked as engine feature, not spec)
+
+## Last-session open questions
+
+1. **Astro offline build** — does the secondary config actually work cleanly? Untested. Try in 0.10.
+2. **Multi-page polyglot** — engineering project; ~2000-3000 LOC. Probably 0.11+.
+3. **Other public clearcms repos** — user decides what to private: clear-2026-05, clear-legacy, bucket, examples-host.
+4. **Locale-prefix folder pattern** — formalize as MIP-0015 or fold into MIP-0014 extension. 0.10 work.
+5. **`folderdb serve`** — should the binary include a local http server for `dist/` browsing? Likely yes; ~50 LOC.
+

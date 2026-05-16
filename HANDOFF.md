@@ -108,3 +108,17 @@ When you (future Claude session) pick this up:
 Run `git log --oneline 0.9-realignment` for the full chain. Highlights:
 - archive 0.8.1 → SPEC hoist → skills + MIP template → CHANGELOG reconstruct → PHILOSOPHY (8 truths) → license fix → cleanup commits → STATE.md → PRINCIPLES (3 truths) → profiles dropped → VIEWER.html → tabbed VIEWER with STAC + OCI → fixed static sizes → this handoff
 
+
+
+## Late-session additions (2026-05-16)
+
+- `clearcms/clear` made PRIVATE. Clear is closed-source going forward.
+- Other clear repos still public: `clear-2026-05`, `clear-legacy`, `bucket`, `examples-host` — user decides
+- Polyglot `.mosaic.html` proven with real 49MB clear-ucc content (45MB output, valid as both HTML and ZIP) at `/tmp/clear-ucc.mosaic.html`
+- Astro offline build investigation: server-mode + Vercel adapter + absolute paths block file://; fix = secondary `astro.config.offline.mjs` with `output: 'static'` + `inlineStylesheets: 'always'`
+- Multi-page-into-single-HTML = ~2000-3000 LOC bundler engineering (0.11+); for now, ship `dist/` as zip + recipient runs local http.server
+- Locale-prefix folder pattern (`pages/uk/about.md`) reopened as a first-class pattern alongside MIP-0014's suffix files — 0.10 MIP candidate
+- Bundle modes proposed: view-only / `--edit` / `--view-translation` for FolderDB binary (0.11+)
+- "Profile" terminology DROPPED in spec; use "use case" in docs only
+
+See STATE.md late-session-additions section for full detail on each.
